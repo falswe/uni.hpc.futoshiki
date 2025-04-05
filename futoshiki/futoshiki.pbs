@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# Max walltime 6h
+#PBS -q short_cpuQ
+# Expected timespan for execution
+#PBS -l walltime=00:02:00
+# Chunks (~ Nodes) : Cores per chunk : Shared memory per chunk
+#PBS -l select=1:ncpus=64:mem=8gb
+
+# Change to the directory from which the job was submitted
+cd $PBS_O_WORKDIR
+
+# Build
+echo "Building..."
+./build.sh
+echo ""
+
+echo "Starting Futoshiki solver at $(date)"
+echo "PBS_JOBID: $PBS_JOBID"
+echo "PBS_O_WORKDIR: $PBS_O_WORKDIR"
+echo "Hostname: $(hostname)"
+echo ""
+
+# Number of threads to use
+export OMP_NUM_THREADS=64
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
+
+echo "Using OMP_NUM_THREADS=$OMP_NUM_THREADS"
+echo ""
+
+echo "Running 9x9_extreme1..."
+echo "-----------------------"
+./futoshiki examples/9x9_extreme1_initial.txt
+echo ""
+
+echo "Running 9x9_extreme2..."
+echo "-----------------------"
+./futoshiki examples/9x9_extreme2_initial.txt
+echo ""
+
+# echo "Running 9x9_extreme3..."
+# echo "-----------------------"
+# ./futoshiki examples/9x9_extreme3_initial.txt -v
+# echo ""
+
+echo "Tests completed at $(date)"

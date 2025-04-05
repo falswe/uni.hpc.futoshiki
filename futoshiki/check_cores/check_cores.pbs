@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# Max walltime 6h
+#PBS -q short_cpuQ
+# Expected timespan for execution
+#PBS -l walltime=00:01:00
+# Chunks (~ Nodes) : Cores per chunk : Shared memory per chunk
+#PBS -l select=1:ncpus=32:mem=2gb
+
+# Change to the directory from which the job was submitted
+cd $PBS_O_WORKDIR
+
+# Build the program
+gcc -fopenmp check_cores.c -o check_cores
+
+# Print PBS-specific environment information
+echo "=== PBS Environment Variables ==="
+echo "PBS_NUM_PPN: $PBS_NUM_PPN"
+echo "PBS_NUM_NODES: $PBS_NUM_NODES"
+echo "PBS_JOBID: $PBS_JOBID"
+echo "PBS_O_WORKDIR: $PBS_O_WORKDIR"
+echo "PBS_O_HOST: $PBS_O_HOST"
+echo "PBS_NODEFILE: $PBS_NODEFILE"
+echo "Contents of nodefile:"
+cat $PBS_NODEFILE
+echo "==============================="
+
+# Run with various OMP_NUM_THREADS settings
+echo "Running with OMP_NUM_THREADS unset:"
+./check_cores
+
+echo "Running with OMP_NUM_THREADS=1:"
+export OMP_NUM_THREADS=1
+./check_cores
+
+echo "Running with OMP_NUM_THREADS=8:"
+export OMP_NUM_THREADS=8
+./check_cores
+
+echo "Running with OMP_NUM_THREADS set to maximum:"
+export OMP_NUM_THREADS=$PBS_NUM_PPN
+./check_cores

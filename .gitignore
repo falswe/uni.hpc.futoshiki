@@ -1,0 +1,13 @@
+# built files (without extension)
+# ignore all files
+*
+# un-ignore all directories
+!*/
+# un-ignore all files with extensions
+!*.*
+
+# object files
+*.o
+
+# custom vscode files
+.vscode/
