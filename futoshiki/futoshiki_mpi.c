@@ -33,8 +33,8 @@ typedef struct {
 } Futoshiki;
 
 static bool g_show_progress = false;
-static int g_mpi_rank = 0;
-static int g_mpi_size = 1;
+int g_mpi_rank = 0;
+int g_mpi_size = 1;
 
 void set_progress_display(bool show) { g_show_progress = show; }
 
@@ -417,12 +417,6 @@ bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     bool found_solution = false;
     int active_workers = g_mpi_size - 1;
 
-    // Track which worker is processing which color
-    int worker_assignments[MAX_N];
-    for (int i = 0; i < g_mpi_size; i++) {
-        worker_assignments[i] = -1;
-    }
-
     while (active_workers > 0 && !found_solution) {
         MPI_Status status;
         bool worker_found_solution;
@@ -457,7 +451,6 @@ bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
                 MPI_Send(color_assignment, 3, MPI_INT, status.MPI_SOURCE, TAG_COLOR_ASSIGNMENT,
                          MPI_COMM_WORLD);
 
-                worker_assignments[status.MPI_SOURCE] = next_color_idx;
                 print_progress("Master assigned color %d to worker %d", color, status.MPI_SOURCE);
                 next_color_idx++;
             } else {

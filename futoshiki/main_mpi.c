@@ -1,16 +1,18 @@
 #include <mpi.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "comparison.h"
-#include "futoshiki.h"
 
-// External MPI functions from futoshiki_mpi.c
-extern void init_mpi(int* argc, char*** argv);
-extern void finalize_mpi();
+// External MPI variables and functions from futoshiki_mpi.c
 extern int g_mpi_rank;
 extern int g_mpi_size;
+extern void init_mpi(int* argc, char*** argv);
+extern void finalize_mpi();
+extern void set_progress_display(bool show);
+extern SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_solution);
 
 int main(int argc, char* argv[]) {
     // Initialize MPI
