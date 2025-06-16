@@ -1,0 +1,45 @@
+#!/bin/bash
+
+# Max walltime 6h
+#PBS -q short_cpuQ
+# Expected timespan for execution
+#PBS -l walltime=02:00:00
+# Chunks (~ Nodes) : Cores per chunk : Shared memory per chunk
+#PBS -l select=1:ncpus=64:mem=8gb
+
+# Change to the directory from which the job was submitted
+cd $PBS_O_WORKDIR
+
+# Load necessary modules
+module load openmpi-4.0.4
+
+# Build
+echo "Building MPI version..."
+./build_mpi.sh
+
+echo "Starting Futoshiki MPI Performance Testing at $(date)"
+echo "PBS_JOBID: $PBS_JOBID"
+echo "PBS_O_WORKDIR: $PBS_O_WORKDIR"
+echo "Hostname: $(hostname)"
+
+# Function to run a test with specific number of processes
+run_test() {
+    local nprocs=$1
+    local puzzle=$2
+    
+    echo "=== Running $puzzle with $nprocs processes ==="
+    time mpirun -np $nprocs ./futoshiki_mpi examples/$puzzle -c
+    echo ""
+}
+
+# Scaling tests with different process counts
+for nprocs in 1 2 4 8 16 #32 64
+do
+    echo "############################################"
+    echo "# Testing with $nprocs MPI processes"
+    echo "############################################"
+    
+    run_test $nprocs "9x9_extreme1_initial.txt"
+done
+
+echo "Performance testing completed at $(date)"
