@@ -1,7 +1,6 @@
 #include <mpi.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "comparison.h"
@@ -29,10 +28,6 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    if (g_mpi_rank == 0) {
-        printf("Running with %d MPI processes\n", g_mpi_size);
-    }
-
     // Parse command-line options
     bool use_precoloring = true;
     bool verbose = false;
@@ -40,9 +35,28 @@ int main(int argc, char* argv[]) {
     for (int i = 2; i < argc; i++) {
         if (strcmp(argv[i], "-c") == 0) {
             set_progress_display(verbose);
+            // Only master runs comparison, but all processes must participate in solve_puzzle
             if (g_mpi_rank == 0) {
-                run_comparison(argv[1]);
+                printf("Running comparison mode...\n");
+
+                // Run with precoloring
+                printf("\nTesting with precoloring enabled...\n");
             }
+            SolverStats with_precolor = solve_puzzle(argv[1], true, false);
+
+            if (g_mpi_rank == 0) {
+                // Run without precoloring
+                printf("\nTesting with precoloring disabled...\n");
+            }
+            SolverStats without_precolor = solve_puzzle(argv[1], false, false);
+
+            if (g_mpi_rank == 0) {
+                // Print results
+                print_stats(&with_precolor, "\nWith Precoloring");
+                print_stats(&without_precolor, "\nWithout Precoloring");
+                print_comparison(&with_precolor, &without_precolor);
+            }
+
             finalize_mpi();
             return 0;
         } else if (strcmp(argv[i], "-n") == 0) {
@@ -53,8 +67,11 @@ int main(int argc, char* argv[]) {
     }
 
     set_progress_display(verbose);
-    SolverStats stats = solve_puzzle(argv[1], use_precoloring, g_mpi_rank == 0);
 
+    // All processes need to call solve_puzzle due to collective operations
+    SolverStats stats = solve_puzzle(argv[1], use_precoloring, true);
+
+    // Only master prints statistics
     if (g_mpi_rank == 0) {
         print_stats(&stats, "");
     }

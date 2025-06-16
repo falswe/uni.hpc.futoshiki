@@ -1,5 +1,5 @@
-#ifndef FUTOSHIKI_H
-#define FUTOSHIKI_H
+#ifndef FUTOSHIKI_MPI_H
+#define FUTOSHIKI_MPI_H
 
 #include <stdbool.h>
 
@@ -19,4 +19,4 @@ void set_progress_display(bool show);
 void init_mpi(int* argc, char*** argv);
 void finalize_mpi();
 
-#endif  // FUTOSHIKI_H
+#endif  // FUTOSHIKI_MPI_H
