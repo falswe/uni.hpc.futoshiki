@@ -1,13 +1,3 @@
-/**
- * Improved parallel implementation of the Futoshiki solver
- *
- * Key improvements:
- * 1. Multi-level parallelization in backtracking
- * 2. Parallel pre-coloring phase
- * 3. Intelligent cell selection strategy
- * 4. Better code organization and documentation
- */
-
 #include "futoshiki.h"
 
 #include <ctype.h>
@@ -23,7 +13,6 @@
 
 #define MAX_N 50
 #define EMPTY 0
-#define MAX_PARALLEL_DEPTH 3  // Maximum depth for parallel task creation
 
 typedef enum { NO_CONS = 0, GREATER = 1, SMALLER = 2 } Constraint;
 
@@ -37,25 +26,10 @@ typedef struct {
     int pc_lengths[MAX_N][MAX_N];         // Possible colors list length for each cell
 } Futoshiki;
 
-// Structure for representing a cell position
-typedef struct {
-    int row;
-    int col;
-} Cell;
-
 static bool g_show_progress = false;
 
-/**
- * Enable or disable progress display
- * @param show Whether to show progress messages
- */
 void set_progress_display(bool show) { g_show_progress = show; }
 
-/**
- * Print progress message if progress display is enabled
- * @param format printf-style format string
- * @param ... Additional arguments for format string
- */
 static void print_progress(const char* format, ...) {
     if (!g_show_progress) return;
 
@@ -67,12 +41,6 @@ static void print_progress(const char* format, ...) {
     va_end(args);
 }
 
-/**
- * Print the colors available for a specific cell
- * @param puzzle The Futoshiki puzzle
- * @param row Row index
- * @param col Column index
- */
 static void print_cell_colors(const Futoshiki* puzzle, int row, int col) {
     if (!g_show_progress) return;
 
@@ -83,15 +51,6 @@ static void print_cell_colors(const Futoshiki* puzzle, int row, int col) {
     printf("\n");
 }
 
-/**
- * Check if a color is safe to place in a cell based on constraints
- * @param puzzle The Futoshiki puzzle
- * @param row Row index
- * @param col Column index
- * @param solution Current partial solution
- * @param color Color to check
- * @return true if the color is safe, false otherwise
- */
 bool safe(const Futoshiki* puzzle, int row, int col, int solution[MAX_N][MAX_N], int color) {
     // If cell has a given color, only allow that color
     if (puzzle->board[row][col] != EMPTY) {
@@ -159,15 +118,6 @@ bool safe(const Futoshiki* puzzle, int row, int col, int solution[MAX_N][MAX_N],
     return true;
 }
 
-/**
- * Check if a cell has valid neighbors that satisfy inequality constraints
- * @param puzzle The Futoshiki puzzle
- * @param row Row index
- * @param col Column index
- * @param color Color to check
- * @param need_greater Whether we need a neighbor with a greater value
- * @return true if a valid neighbor exists, false otherwise
- */
 bool has_valid_neighbor(const Futoshiki* puzzle, int row, int col, int color, bool need_greater) {
     for (int i = 0; i < puzzle->pc_lengths[row][col]; i++) {
         int neighbor_color = puzzle->pc_list[row][col][i];
@@ -179,14 +129,6 @@ bool has_valid_neighbor(const Futoshiki* puzzle, int row, int col, int color, bo
     return false;
 }
 
-/**
- * Check if a color satisfies all inequality constraints with neighboring cells
- * @param puzzle The Futoshiki puzzle
- * @param row Row index
- * @param col Column index
- * @param color Color to check
- * @return true if the color satisfies all constraints, false otherwise
- */
 bool satisfies_inequalities(const Futoshiki* puzzle, int row, int col, int color) {
     // Check horizontal constraints
     if (col > 0) {
@@ -265,12 +207,6 @@ bool satisfies_inequalities(const Futoshiki* puzzle, int row, int col, int color
     return true;
 }
 
-/**
- * Filter the possible colors for a cell based on constraints
- * @param puzzle The Futoshiki puzzle
- * @param row Row index
- * @param col Column index
- */
 void filter_possible_colors(Futoshiki* puzzle, int row, int col) {
     if (puzzle->board[row][col] != EMPTY) {
         puzzle->pc_lengths[row][col] = 1;
@@ -288,13 +224,6 @@ void filter_possible_colors(Futoshiki* puzzle, int row, int col) {
     puzzle->pc_lengths[row][col] = new_length;
 }
 
-/**
- * Process uniqueness constraints for a cell
- * If a cell has only one possible color, remove that color from row and column
- * @param puzzle The Futoshiki puzzle
- * @param row Row index
- * @param col Column index
- */
 void process_uniqueness(Futoshiki* puzzle, int row, int col) {
     if (puzzle->pc_lengths[row][col] == 1) {
         int color = puzzle->pc_list[row][col][0];
@@ -321,20 +250,12 @@ void process_uniqueness(Futoshiki* puzzle, int row, int col) {
     }
 }
 
-/**
- * Compute the possible color lists for each cell
- * This is the pre-coloring phase, which can be parallelized
- * @param puzzle The Futoshiki puzzle
- * @param use_precoloring Whether to use precoloring optimization
- * @return Number of colors removed in the pre-coloring phase
- */
 int compute_pc_lists(Futoshiki* puzzle, bool use_precoloring) {
     print_progress("Starting pre-coloring");
     int total_colors_removed = 0;
     int initial_colors = 0;
 
-// Initialize pc_lists
-#pragma omp parallel for collapse(2) reduction(+ : initial_colors) if (use_precoloring)
+    // Initialize pc_lists
     for (int row = 0; row < puzzle->size; row++) {
         for (int col = 0; col < puzzle->size; col++) {
             puzzle->pc_lengths[row][col] = 0;
@@ -357,125 +278,60 @@ int compute_pc_lists(Futoshiki* puzzle, bool use_precoloring) {
 
     if (use_precoloring) {
         bool changes;
-        int iterations = 0;
         do {
             changes = false;
             int old_lengths[MAX_N][MAX_N];
             memcpy(old_lengths, puzzle->pc_lengths, sizeof(old_lengths));
-            int colors_removed_this_iter = 0;
 
-// Process each cell in parallel
-#pragma omp parallel for collapse(2) reduction(+ : colors_removed_this_iter) schedule(dynamic)
+            // Process each cell
             for (int row = 0; row < puzzle->size; row++) {
                 for (int col = 0; col < puzzle->size; col++) {
                     int before_length = puzzle->pc_lengths[row][col];
-
-// We need to synchronize here because process_uniqueness
-// affects other cells' color lists
-#pragma omp critical
-                    {
-                        filter_possible_colors(puzzle, row, col);
-                        process_uniqueness(puzzle, row, col);
-                    }
-
-                    colors_removed_this_iter += before_length - puzzle->pc_lengths[row][col];
+                    filter_possible_colors(puzzle, row, col);
+                    process_uniqueness(puzzle, row, col);
+                    total_colors_removed += before_length - puzzle->pc_lengths[row][col];
                 }
             }
-
-            total_colors_removed += colors_removed_this_iter;
-            iterations++;
 
             // Check for changes
             for (int row = 0; row < puzzle->size; row++) {
                 for (int col = 0; col < puzzle->size; col++) {
                     if (puzzle->pc_lengths[row][col] != old_lengths[row][col]) {
                         changes = true;
-                        break;
                     }
                 }
-                if (changes) break;
             }
-
-            print_progress("Pre-coloring iteration %d: removed %d colors", iterations,
-                           colors_removed_this_iter);
-
         } while (changes);
-
-        print_progress("Pre-coloring complete after %d iterations", iterations);
     }
 
+    print_progress("Pre-coloring complete");
     return total_colors_removed;
 }
 
-/**
- * Find the most constrained cell (with fewest possible colors)
- * @param puzzle The Futoshiki puzzle
- * @param solution Current partial solution
- * @param start_row Start row for search
- * @param start_col Start column for search
- * @return Position of the most constrained empty cell
- */
-Cell find_most_constrained_cell(const Futoshiki* puzzle, int solution[MAX_N][MAX_N], int start_row,
-                                int start_col) {
-    Cell best_cell = {-1, -1};
-    int min_colors = puzzle->size + 1;
-
-    for (int row = 0; row < puzzle->size; row++) {
-        for (int col = 0; col < puzzle->size; col++) {
-            // Skip cells that are already filled
-            if (solution[row][col] != EMPTY) continue;
-
-            // Skip cells before the starting position
-            if (row < start_row || (row == start_row && col < start_col)) continue;
-
-            // Count actual valid colors for this cell
-            int valid_colors = 0;
-            for (int i = 0; i < puzzle->pc_lengths[row][col]; i++) {
-                int color = puzzle->pc_list[row][col][i];
-                if (safe(puzzle, row, col, solution, color)) {
-                    valid_colors++;
-                }
-            }
-
-            // Update best cell if this one has fewer valid colors
-            if (valid_colors > 0 && valid_colors < min_colors) {
-                min_colors = valid_colors;
-                best_cell.row = row;
-                best_cell.col = col;
-            }
-        }
-    }
-
-    // If no cell was found, return (-1, -1)
-    return best_cell;
-}
-
-/**
- * Sequential backtracking algorithm for deeper levels
- * @param puzzle The Futoshiki puzzle
- * @param solution Current partial solution
- * @param start_row Start row for search
- * @param start_col Start column for search
- * @return true if a solution is found, false otherwise
- */
-bool color_g_seq(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int start_row, int start_col) {
-    // Find the next empty cell (most constrained one)
-    Cell next_cell = find_most_constrained_cell(puzzle, solution, start_row, start_col);
-
-    // If no empty cell found, the puzzle is solved
-    if (next_cell.row == -1) {
+// Sequential backtracking algorithm for deeper levels
+bool color_g_seq(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col) {
+    // Check if we have completed the grid
+    if (row >= puzzle->size) {
         return true;
     }
 
-    int row = next_cell.row;
-    int col = next_cell.col;
+    // Move to the next row when current row is complete
+    if (col >= puzzle->size) {
+        return color_g_seq(puzzle, solution, row + 1, 0);
+    }
 
-    // Try each possible color for the selected cell
+    // Skip given cells
+    if (puzzle->board[row][col] != EMPTY) {
+        solution[row][col] = puzzle->board[row][col];
+        return color_g_seq(puzzle, solution, row, col + 1);
+    }
+
+    // Try each possible color for current cell
     for (int i = 0; i < puzzle->pc_lengths[row][col]; i++) {
         int color = puzzle->pc_list[row][col][i];
         if (safe(puzzle, row, col, solution, color)) {
             solution[row][col] = color;
-            if (color_g_seq(puzzle, solution, row, col)) {
+            if (color_g_seq(puzzle, solution, row, col + 1)) {
                 return true;
             }
             solution[row][col] = EMPTY;  // Backtrack
@@ -485,89 +341,96 @@ bool color_g_seq(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int start_row, i
     return false;
 }
 
-/**
- * Recursive parallel backtracking with multi-level parallelism
- * @param puzzle The Futoshiki puzzle
- * @param solution Current partial solution
- * @param depth Current recursion depth
- * @param row Current row
- * @param col Current column
- * @return true if a solution is found, false otherwise
- */
-bool color_g_parallel(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int depth, int row, int col) {
-    // Find the next empty cell (most constrained one)
-    Cell next_cell = find_most_constrained_cell(puzzle, solution, row, col);
-
-    // If no empty cell found, the puzzle is solved
-    if (next_cell.row == -1) {
-        return true;
-    }
-
-    row = next_cell.row;
-    col = next_cell.col;
-
-    // Determine if we should continue parallel or switch to sequential
-    // Based on depth and available threads
-    bool use_parallel = (depth < MAX_PARALLEL_DEPTH && omp_get_num_threads() > 1 &&
-                         puzzle->pc_lengths[row][col] > 1);
+// Parallelization that creates tasks for first level choices
+bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col) {
+    print_progress("Starting parallel backtracking");
 
     bool found_solution = false;
 
-    if (use_parallel) {
-// Create tasks for each possible color
+    // Find first empty cell to parallelize on
+    // TODO: consider the subsequent empty cells for parallelization
+    //       rn only 2 threads are doing the work if there's only 2 colors in the first empty cell
+    //       this could be improved greatly by just going on with other empty cells
+    int start_row = 0, start_col = 0;
+    bool found_empty = false;
+
+    for (int r = 0; r < puzzle->size && !found_empty; r++) {
+        for (int c = 0; c < puzzle->size && !found_empty; c++) {
+            if (puzzle->board[r][c] == EMPTY) {
+                start_row = r;
+                start_col = c;
+                found_empty = true;
+            } else {
+                solution[r][c] = puzzle->board[r][c];
+            }
+        }
+    }
+
+    if (!found_empty) {
+        // No empty cells, puzzle is already solved
+        return true;
+    }
+
+    print_progress("Parallelizing on first empty cell");
+    print_progress("First empty cell at (%d,%d) with %d possible colors", start_row, start_col,
+                   puzzle->pc_lengths[start_row][start_col]);
+
+    // Manually create private copies for each task to avoid issues
+    int num_colors = puzzle->pc_lengths[start_row][start_col];
+    int task_solutions[MAX_N][MAX_N][MAX_N];  // One solution matrix per possible color
+
 #pragma omp parallel
-        {
+    {
 #pragma omp single
-            {
-                for (int i = 0; i < puzzle->pc_lengths[row][col] && !found_solution; i++) {
-                    int color = puzzle->pc_list[row][col][i];
-                    if (safe(puzzle, row, col, solution, color)) {
-#pragma omp task firstprivate(color, depth) shared(found_solution, solution)
-                        {
-                            // Create local copy of solution
-                            int local_solution[MAX_N][MAX_N];
-                            memcpy(local_solution, solution, sizeof(local_solution));
+        {
+            print_progress("Using %d threads for parallel solving", omp_get_num_threads());
 
-                            // Set color for this branch
-                            local_solution[row][col] = color;
+            for (int i = 0; i < num_colors && !found_solution; i++) {
+                int color = puzzle->pc_list[start_row][start_col][i];
 
-                            // Continue with next level of parallelism or sequential
-                            bool success;
-                            if (depth + 1 < MAX_PARALLEL_DEPTH) {
-                                success =
-                                    color_g_parallel(puzzle, local_solution, depth + 1, row, col);
-                            } else {
-                                success = color_g_seq(puzzle, local_solution, row, col);
-                            }
+                if (safe(puzzle, start_row, start_col, solution, color)) {
+#pragma omp task firstprivate(i, color) shared(found_solution, task_solutions)
+                    {
+                        print_progress("Thread %d trying color %d at (%d,%d)", omp_get_thread_num(),
+                                       color, start_row, start_col);
 
-                            // Update shared solution if successful
-                            if (success) {
+                        // Create a local copy of the solution
+                        int local_solution[MAX_N][MAX_N];
+                        memcpy(local_solution, solution, sizeof(local_solution));
+
+                        // Set the color for this branch
+                        local_solution[start_row][start_col] = color;
+
+                        // Try to solve using sequential algorithm from this point
+                        if (color_g_seq(puzzle, local_solution, start_row, start_col + 1)) {
 #pragma omp critical
-                                {
-                                    if (!found_solution) {
-                                        found_solution = true;
-                                        memcpy(solution, local_solution, sizeof(local_solution));
-                                    }
+                            {
+                                if (!found_solution) {
+                                    found_solution = true;
+                                    // Save to task solutions array for the main thread to access
+                                    memcpy(task_solutions[i], local_solution,
+                                           sizeof(local_solution));
+                                    print_progress("Thread %d found solution with color %d",
+                                                   omp_get_thread_num(), color);
                                 }
                             }
                         }
                     }
                 }
+            }
 
+            print_progress("Waiting for tasks to complete");
 #pragma omp taskwait
-            }
+            print_progress("All tasks completed");
         }
-    } else {
-        // Sequential backtracking
-        for (int i = 0; i < puzzle->pc_lengths[row][col] && !found_solution; i++) {
-            int color = puzzle->pc_list[row][col][i];
-            if (safe(puzzle, row, col, solution, color)) {
-                solution[row][col] = color;
-                if (color_g_seq(puzzle, solution, row, col)) {
-                    found_solution = true;
-                } else {
-                    solution[row][col] = EMPTY;  // Backtrack
-                }
+    }
+
+    // Copy solution from successful task to output solution matrix
+    if (found_solution) {
+        for (int i = 0; i < num_colors; i++) {
+            if (task_solutions[i][start_row][start_col] != 0) {
+                memcpy(solution, task_solutions[i], sizeof(task_solutions[i]));
+                break;
             }
         }
     }
@@ -575,41 +438,6 @@ bool color_g_parallel(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int depth, 
     return found_solution;
 }
 
-/**
- * Main solver function
- * @param puzzle The Futoshiki puzzle
- * @param solution Output solution array
- * @param row Starting row
- * @param col Starting column
- * @return true if a solution is found, false otherwise
- */
-bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col) {
-    print_progress("Starting parallel backtracking with multi-level parallelism");
-
-    // Initialize solution with pre-filled values
-    for (int r = 0; r < puzzle->size; r++) {
-        for (int c = 0; c < puzzle->size; c++) {
-            if (puzzle->board[r][c] != EMPTY) {
-                solution[r][c] = puzzle->board[r][c];
-            } else {
-                solution[r][c] = EMPTY;
-            }
-        }
-    }
-
-    // Start recursive parallel solving from depth 0
-    bool found_solution = color_g_parallel(puzzle, solution, 0, 0, 0);
-
-    print_progress("Backtracking %s",
-                   found_solution ? "found a solution" : "did not find a solution");
-    return found_solution;
-}
-
-/**
- * Print the puzzle board with constraints
- * @param puzzle The Futoshiki puzzle
- * @param solution Solution array
- */
 void print_board(const Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     for (int row = 0; row < puzzle->size; row++) {
         for (int col = 0; col < puzzle->size; col++) {
@@ -650,12 +478,6 @@ void print_board(const Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     printf("\n");
 }
 
-/**
- * Parse a Futoshiki puzzle from a string
- * @param input Input string containing the puzzle
- * @param puzzle Output puzzle structure
- * @return true if parsing was successful, false otherwise
- */
 bool parse_futoshiki(const char* input, Futoshiki* puzzle) {
     print_progress("Parsing puzzle input");
 
@@ -763,12 +585,7 @@ bool parse_futoshiki(const char* input, Futoshiki* puzzle) {
     return true;
 }
 
-/**
- * Read a puzzle from a file
- * @param filename Name of the input file
- * @param puzzle Output puzzle structure
- * @return true if reading was successful, false otherwise
- */
+// File reading function
 bool read_puzzle_from_file(const char* filename, Futoshiki* puzzle) {
     print_progress("Reading puzzle file");
 
@@ -779,41 +596,29 @@ bool read_puzzle_from_file(const char* filename, Futoshiki* puzzle) {
     }
 
     char buffer[1024] = {0};
-    char content[4096] = {0};  // Increased buffer size for larger puzzles
+    char content[1024] = {0};
     int total_read = 0;
 
     while (fgets(buffer, sizeof(buffer), file)) {
-        int read_len = strlen(buffer);
-        if (total_read + read_len >= sizeof(content) - 1) {
+        strcat(content, buffer);
+        total_read += strlen(buffer);
+        if (total_read >= sizeof(content) - 1) {
             printf("Error: Puzzle file too large\n");
             fclose(file);
             return false;
         }
-        strcat(content, buffer);
-        total_read += read_len;
     }
 
     fclose(file);
     return parse_futoshiki(content, puzzle);
 }
 
-/**
- * Get current time in seconds
- * @return Current time in seconds
- */
 double get_time() {
     struct timeval tv;
     gettimeofday(&tv, NULL);
     return tv.tv_sec + tv.tv_usec * 1e-6;
 }
 
-/**
- * Solve a Futoshiki puzzle
- * @param filename Name of the input file
- * @param use_precoloring Whether to use precoloring optimization
- * @param print_solution Whether to print the solution
- * @return Statistics about the solving process
- */
 SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_solution) {
     SolverStats stats = {0};
     Futoshiki puzzle;

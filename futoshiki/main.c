@@ -1,5 +1,4 @@
 #include <omp.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,7 +27,7 @@ int main(int argc, char* argv[]) {
     // Parse command-line options
     bool use_precoloring = true;
     bool verbose = false;
-
+    
     for (int i = 2; i < argc; i++) {
         if (strcmp(argv[i], "-c") == 0) {
             set_progress_display(verbose);
