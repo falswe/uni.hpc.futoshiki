@@ -28,6 +28,10 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    if (g_mpi_rank == 0) {
+        printf("Running with %d MPI processes\n", g_mpi_size);
+    }
+
     // Parse command-line options
     bool use_precoloring = true;
     bool verbose = false;

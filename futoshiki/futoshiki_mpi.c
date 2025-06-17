@@ -312,7 +312,6 @@ int compute_pc_lists(Futoshiki* puzzle, bool use_precoloring) {
 bool color_g_seq(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col) {
     // Check if we have completed the grid
     if (row >= puzzle->size) {
-        print_progress("Sequential solver: Found complete solution!");
         return true;
     }
 
@@ -327,34 +326,16 @@ bool color_g_seq(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col
         return color_g_seq(puzzle, solution, row, col + 1);
     }
 
-    // Debug: print what we're trying
-    if (row == 0 && col == 1) {  // First empty cell
-        print_progress("Sequential solver: Trying cell (%d,%d) with %d possible colors", row, col,
-                       puzzle->pc_lengths[row][col]);
-    }
-
     // Try each possible color for current cell
     for (int i = 0; i < puzzle->pc_lengths[row][col]; i++) {
         int color = puzzle->pc_list[row][col][i];
 
-        if (row == 0 && col == 1) {  // Debug first empty cell
-            print_progress("Trying color %d at (%d,%d)", color, row, col);
-        }
-
         if (safe(puzzle, row, col, solution, color)) {
-            if (row == 0 && col == 1) {  // Debug first empty cell
-                print_progress("Color %d is safe at (%d,%d)", color, row, col);
-            }
-
             solution[row][col] = color;
             if (color_g_seq(puzzle, solution, row, col + 1)) {
                 return true;
             }
             solution[row][col] = EMPTY;  // Backtrack
-        } else {
-            if (row == 0 && col == 1) {  // Debug first empty cell
-                print_progress("Color %d is NOT safe at (%d,%d)", color, row, col);
-            }
         }
     }
 
@@ -831,17 +812,8 @@ void init_mpi(int* argc, char*** argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &g_mpi_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &g_mpi_size);
 
-    // All processes print their initialization
-    printf("Process %d of %d initialized\n", g_mpi_rank, g_mpi_size);
-    fflush(stdout);
-
     // Synchronize all processes
     MPI_Barrier(MPI_COMM_WORLD);
-
-    if (g_mpi_rank == MASTER_RANK) {
-        printf("MPI initialized successfully with %d processes\n", g_mpi_size);
-        fflush(stdout);
-    }
 }
 
 void finalize_mpi() { MPI_Finalize(); }
