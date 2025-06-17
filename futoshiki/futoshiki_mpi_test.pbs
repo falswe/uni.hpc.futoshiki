@@ -1,0 +1,61 @@
+#!/bin/bash
+
+#PBS -q short_cpuQ
+#PBS -l walltime=00:30:00
+#PBS -l select=1:ncpus=8:mem=4gb
+
+# Change to the directory from which the job was submitted
+cd $PBS_O_WORKDIR
+
+# Load necessary modules  
+module load openmpi-4.0.4
+
+# Build
+echo "Building MPI version..."
+./build_mpi.sh
+echo ""
+
+echo "Starting Futoshiki MPI Test at $(date)"
+echo "PBS_JOBID: $PBS_JOBID"
+echo "Hostname: $(hostname)"
+echo ""
+
+# Check MPI environment
+echo "MPI Environment Check:"
+echo "===================="
+which mpirun
+mpirun --version | head -1
+echo ""
+
+# Test with different approaches
+echo "Test 1: Using --oversubscribe flag"
+echo "=================================="
+mpirun -np 4 --oversubscribe ./futoshiki_mpi examples/4x4_easy_initial.txt
+echo ""
+
+echo "Test 2: Using --use-hwthread-cpus flag"
+echo "======================================"
+mpirun -np 4 --use-hwthread-cpus ./futoshiki_mpi examples/4x4_easy_initial.txt
+echo ""
+
+echo "Test 3: Testing first empty cell parallelization"
+echo "=============================================="
+echo "Running with verbose mode to see work distribution..."
+mpirun -np 4 --oversubscribe ./futoshiki_mpi examples/9x9_extreme1_initial.txt -v | grep -E "(Process|Master|Worker|assigned|solution)"
+echo ""
+
+echo "Test 4: Performance comparison"
+echo "============================="
+echo "1 process:"
+time mpirun -np 1 ./futoshiki_mpi examples/9x9_extreme1_initial.txt | grep -E "(Solution:|solution time)"
+
+echo ""
+echo "4 processes:"
+time mpirun -np 4 --oversubscribe ./futoshiki_mpi examples/9x9_extreme1_initial.txt | grep -E "(Solution:|solution time)"
+
+echo ""
+echo "8 processes:" 
+time mpirun -np 8 --oversubscribe ./futoshiki_mpi examples/9x9_extreme1_initial.txt | grep -E "(Solution:|solution time)"
+
+echo ""
+echo "Tests completed at $(date)"
