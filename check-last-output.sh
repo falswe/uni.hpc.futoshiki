@@ -1,1 +1,0 @@
-find . -type f -name "*.sh.o*" | tail -n 1 | xargs cat

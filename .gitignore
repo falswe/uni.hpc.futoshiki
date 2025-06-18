@@ -11,3 +11,7 @@
 
 # custom vscode files
 .vscode/
+
+# Build directories
+bin/
+obj/

@@ -1,25 +1,94 @@
 # Parallel Futoshiki Solver
 
-Futoshiki is a Japanese puzzle game played on an n×n grid. The name "Futoshiki" means "inequality" in Japanese, highlighting the puzzle's defining feature. The objective is to fill each cell with numbers from 1 to n such that:
+This project provides sequential, OpenMP, and MPI-based parallel solvers for the Futoshiki puzzle.
 
-1. Each number appears exactly once in each row and column (Latin square property)
-2. All inequality constraints between adjacent cells are satisfied (< or >)
-3. Pre-filled values (givens) must be maintained
+Futoshiki is a logic puzzle on an n×n grid. The goal is to fill each cell with numbers from 1 to n such that:
+1.  Each number appears exactly once in each row and column.
+2.  All inequality constraints (`<`, `>`) between adjacent cells are satisfied.
+3.  Any pre-filled values are maintained.
 
-The Futoshiki problem is NP-complete, making it computationally challenging for larger board sizes. This project implements a parallel solver for Futoshiki puzzles using OpenMP, with a focus on optimizing search space and computation time.
+## Project Structure
 
-## Sequential Algorithm Analysis
+The repository is organized as follows:
+```
+.
+├── bin/ # Compiled executables
+├── obj/ # Compiled object files
+├── src/ # Source code
+│ ├── common/ # Code shared by all versions
+│ ├── sequential/ # Sequential solver implementation
+│ ├── openmp/ # OpenMP-based parallel implementation
+│ └── mpi/ # MPI-based parallel implementation
+├── puzzles/ # Example puzzle files
+├── Makefile # Build system configuration
+└── README.md # This documentation file
+```
 
-The sequential approach to solving Futoshiki combines two main techniques:
+## Dependencies
 
-1. **Pre-coloring (Constraint Propagation)**: This phase filters possible values for each cell based on:
-   - Latin square constraints (row/column uniqueness)
-   - Inequality constraints between adjacent cells
-   - Pre-filled values
+To build and run this project, you will need:
+*   A C99 compatible compiler (e.g., `gcc`)
+*   `make`
+*   An OpenMP compatible compiler
+*   An MPI implementation (e.g., OpenMPI, MPICH)
 
-2. **List Coloring (Backtracking)**: This phase uses backtracking to find a valid assignment:
-   - Try each possible value from the filtered list for the current cell
-   - If a valid assignment is found, move to the next cell
-   - If no valid assignment exists, backtrack to the previous cell
+## Building the Project
 
-The sequential backtracking algorithm has a worst-case time complexity of O(n^(n²)), where n is the board size, as each of the n² cells could potentially try all n possible values.
+The project uses a `Makefile` for easy compilation.
+
+*   **Build all versions (sequential, OpenMP, and MPI):**
+    ```bash
+    make all
+    ```
+    *To build in parallel, use the `-j` flag (e.g., `make -j4`).*
+
+*   **Build a specific version:**
+    ```bash
+    make sequential
+    make openmp
+    make mpi
+    ```
+
+*   **Cleaning up:**
+    *   To remove compiled binaries and object files:
+        ```bash
+        make clean
+        ```
+    *   To perform a deep clean (removes build artifacts, job outputs, etc.):
+        ```bash
+        make distclean
+        ```
+
+## Running the Solvers
+
+The compiled executables are located in the `bin/` directory.
+
+*   **Sequential:**
+    ```bash
+    ./bin/futoshiki_seq <path/to/puzzle_file.txt>
+    ```
+
+*   **OpenMP:**
+    ```bash
+    # Set the number of threads before running
+    export OMP_NUM_THREADS=4
+    ./bin/futoshiki_omp <path/to/puzzle_file.txt>
+    ```
+
+*   **MPI:**
+    ```bash
+    # Run with 4 processes
+    mpirun -np 4 ./bin/futoshiki_mpi <path/to/puzzle_file.txt>
+    ```
+
+## Algorithm Overview
+
+The solver uses a combination of constraint propagation and backtracking search.
+
+1.  **Constraint Propagation**: Before searching, the solver filters the possible values for each cell based on row/column uniqueness and inequality constraints. This significantly prunes the search space.
+
+2.  **Backtracking Search**: A recursive algorithm explores the remaining possibilities to find a valid solution.
+
+### Parallelization Strategy
+*   **OpenMP**: The backtracking search space is divided among multiple threads, which explore their assigned sub-trees in parallel on shared memory.
+*   **MPI**: The work is distributed among multiple processes. A master process can distribute initial board configurations to worker processes, who solve their assigned portion of the search space.
