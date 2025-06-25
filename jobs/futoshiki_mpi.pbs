@@ -62,7 +62,7 @@ do
     echo "# Testing with $nprocs MPI processes"
     echo "############################################"
     
-    run_test $nprocs "examples/hard/9x9_extreme1_initial.txt"
+    run_test $nprocs "examples/hard/9x9_extreme1.txt"
 done
 
 echo ""
