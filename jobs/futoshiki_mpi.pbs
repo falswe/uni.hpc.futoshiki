@@ -44,7 +44,7 @@ echo ""
 run_test() {
     local nprocs=$1
     local puzzle=$2
-    local name=$(basename $puzzle .txt
+    local name=$(basename $puzzle .txt)
 
     echo "======================================"
     echo "Running $name with $nprocs processes"
