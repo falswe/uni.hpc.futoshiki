@@ -348,9 +348,6 @@ bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col) {
     bool found_solution = false;
 
     // Find first empty cell to parallelize on
-    // TODO: consider the subsequent empty cells for parallelization
-    //       rn only 2 threads are doing the work if there's only 2 colors in the first empty cell
-    //       this could be improved greatly by just going on with other empty cells
     int start_row = 0, start_col = 0;
     bool found_empty = false;
 
