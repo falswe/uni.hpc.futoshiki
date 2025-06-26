@@ -301,6 +301,38 @@ int compute_pc_lists(Futoshiki* puzzle, bool use_precoloring) {
     return total_colors_removed;
 }
 
+bool color_g_seq(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col) {
+    // Check if we have completed the grid
+    if (row >= puzzle->size) {
+        return true;
+    }
+
+    // Move to the next row when current row is complete
+    if (col >= puzzle->size) {
+        return color_g_seq(puzzle, solution, row + 1, 0);
+    }
+
+    // Skip given cells
+    if (puzzle->board[row][col] != EMPTY) {
+        solution[row][col] = puzzle->board[row][col];
+        return color_g_seq(puzzle, solution, row, col + 1);
+    }
+
+    // Try each possible color for current cell
+    for (int i = 0; i < puzzle->pc_lengths[row][col]; i++) {
+        int color = puzzle->pc_list[row][col][i];
+        if (safe(puzzle, row, col, solution, color)) {
+            solution[row][col] = color;
+            if (color_g_seq(puzzle, solution, row, col + 1)) {
+                return true;
+            }
+            solution[row][col] = EMPTY;  // Backtrack
+        }
+    }
+
+    return false;
+}
+
 void print_board(const Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     for (int row = 0; row < puzzle->size; row++) {
         for (int col = 0; col < puzzle->size; col++) {

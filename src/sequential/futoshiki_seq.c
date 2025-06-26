@@ -1,49 +1,11 @@
-#include "../common/comparison.h"
 #include "../common/futoshiki_common.h"
-
-// Sequential backtracking algorithm
-static bool color_g_seq(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col) {
-    // Check if we have completed the grid
-    if (row >= puzzle->size) {
-        return true;
-    }
-
-    // Move to the next row when current row is complete
-    if (col >= puzzle->size) {
-        return color_g_seq(puzzle, solution, row + 1, 0);
-    }
-
-    // Skip given cells
-    if (puzzle->board[row][col] != EMPTY) {
-        solution[row][col] = puzzle->board[row][col];
-        return color_g_seq(puzzle, solution, row, col + 1);
-    }
-
-    // Try each possible color for current cell
-    for (int i = 0; i < puzzle->pc_lengths[row][col]; i++) {
-        int color = puzzle->pc_list[row][col][i];
-        if (safe(puzzle, row, col, solution, color)) {
-            solution[row][col] = color;
-            if (color_g_seq(puzzle, solution, row, col + 1)) {
-                return true;
-            }
-            solution[row][col] = EMPTY;  // Backtrack
-        }
-    }
-
-    return false;
-}
 
 // Public solving function
 bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col) {
     print_progress("Starting sequential backtracking");
 
-    // Initialize solution with given board values
-    for (int r = 0; r < puzzle->size; r++) {
-        for (int c = 0; c < puzzle->size; c++) {
-            solution[r][c] = puzzle->board[r][c];
-        }
-    }
+    // Initialize solution with board values
+    memcpy(solution, puzzle->board, sizeof(int) * MAX_N * MAX_N);
 
     return color_g_seq(puzzle, solution, 0, 0);
 }

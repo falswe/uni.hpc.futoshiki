@@ -98,6 +98,16 @@ void process_uniqueness(Futoshiki* puzzle, int row, int col);
 int compute_pc_lists(Futoshiki* puzzle, bool use_precoloring);
 
 /**
+ * Sequential backtracking algorithm to solve the Futoshiki puzzle
+ * @param puzzle The Futoshiki puzzle
+ * @param solution Solution matrix to be filled
+ * @param row Starting row index
+ * @param col Starting column index
+ * @return true if a valid solution is found
+ */
+bool color_g_seq(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col);
+
+/**
  * Parse a Futoshiki puzzle from a string
  * @param input Input string containing the puzzle
  * @param puzzle Output puzzle structure
@@ -152,10 +162,6 @@ extern int g_mpi_size;
 
 // Global progress display flag
 extern bool g_show_progress;
-
-// Solver function prototype (implementation-specific)
-// Each implementation (sequential, OpenMP, MPI) will provide their own
-typedef bool (*solver_func)(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col);
 
 /**
  * Main solving interface - all implementations must provide this

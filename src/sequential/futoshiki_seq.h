@@ -1,7 +1,6 @@
 #ifndef FUTOSHIKI_SEQ_H
 #define FUTOSHIKI_SEQ_H
 
-#include "../common/comparison.h"
 #include "../common/futoshiki_common.h"
 
 /**
