@@ -1,14 +1,14 @@
 #!/bin/bash
 
-# PBS script for OpenMP Futoshiki solver
-#PBS -N futoshiki_omp
+# PBS script for MPI Futoshiki solver
+#PBS -N futoshiki_mpi
 
 # Max walltime 6h
 #PBS -q short_cpuQ
 # Expected timespan for execution
 #PBS -l walltime=00:10:00
 # Chunks (~ Nodes) : Cores per chunk : Shared memory per chunk
-#PBS -l select=1:ncpus=64:mem=8gb
+#PBS -l select=16:ncpus=1:mem=8gb
 # Exclusive nodes
 #PBS -l place=excl
 
@@ -19,11 +19,11 @@ cd $PBS_O_WORKDIR
 module load openmpi-4.0.4
 
 # Build
-echo "Building OpenMP version..."
+echo "Building MPI version..."
 make clean
-make openmp
+make mpi
 
-if [ ! -f bin/futoshiki_omp ]; then
+if [ ! -f bin/futoshiki_mpi ]; then
     echo "Build failed!"
     exit 1
 fi
@@ -32,9 +32,9 @@ echo "Build successful"
 echo ""
 
 # System information
-echo "======================="
-echo "Futoshiki OpenMP Solver"
-echo "======================="
+echo "===================="
+echo "Futoshiki MPI Solver"
+echo "===================="
 echo "Job ID: $PBS_JOBID"
 echo "Node: $(hostname)"
 echo "Cores available: $(nproc)"
@@ -42,40 +42,29 @@ echo "Date: $(date)"
 echo "Working directory: $PBS_O_WORKDIR"
 echo ""
 
-# OpenMP environment setup
-export OMP_PROC_BIND=close
-export OMP_PLACES=cores
-export OMP_DISPLAY_ENV=true
-
 # Function to run a test
 run_test() {
-    local threads=$1
+    local nprocs=$1
     local puzzle=$2
     local name=$(basename $puzzle .txt)
 
     echo "======================================"
-    echo "Test: $name with $threads threads"
+    echo "Running $name with $nprocs processes"
     echo "======================================"
 
-    export OMP_NUM_THREADS=$threads
-    time ./bin/futoshiki_omp $puzzle
-    
+    time mpirun -np $nprocs ./bin/futoshiki_mpi $puzzle
+
     echo ""
 }
 
-# Warm-up run
-echo "Performing warm-up run..."
-export OMP_NUM_THREADS=4
-./bin/futoshiki_omp puzzles/4x4_easy.txt > /dev/null 2>&1
-
 # Scaling tests with different process counts
-for threads in 8 16
+for nprocs in 8 16
 do
     echo "############################################"
-    echo "# Testing with $threads OpenMP threads"
+    echo "# Testing with $nprocs MPI processes"
     echo "############################################"
     
-    run_test $threads "puzzles/11x11_hard_1.txt"
+    run_test $nprocs "puzzles/9x9_extreme1.txt"
 done
 
 echo ""
