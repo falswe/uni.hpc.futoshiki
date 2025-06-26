@@ -6,7 +6,7 @@
 # Max walltime 6h
 #PBS -q short_cpuQ
 # Expected timespan for execution
-#PBS -l walltime=00:15:00
+#PBS -l walltime=00:10:00
 # Chunks (~ Nodes) : Cores per chunk : Shared memory per chunk
 #PBS -l select=16:ncpus=1:mem=8gb
 # Exclusive nodes
@@ -58,7 +58,7 @@ run_test() {
 }
 
 # Scaling tests with different process counts
-for nprocs in 16
+for nprocs in 8 16
 do
     echo "############################################"
     echo "# Testing with $nprocs MPI processes"
