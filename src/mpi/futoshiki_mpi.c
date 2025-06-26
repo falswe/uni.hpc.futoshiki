@@ -280,7 +280,7 @@ SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_
     int solution[MAX_N][MAX_N] = {{0}};
     double start_coloring = get_time();
 
-    stats.found_solution = color_g(&puzzle, solution, 0, 0);
+    stats.found_solution = color_g(&puzzle, solution);
 
     double end_coloring = get_time();
     stats.coloring_time = end_coloring - start_coloring;
