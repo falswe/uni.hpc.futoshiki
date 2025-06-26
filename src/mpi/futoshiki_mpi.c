@@ -3,7 +3,6 @@
 #include <mpi.h>
 #include <stdarg.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 // Strong definitions of MPI rank and size
@@ -63,36 +62,46 @@ static bool color_g_seq(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, 
 static void mpi_worker(Futoshiki* puzzle) {
     int solution[MAX_N][MAX_N];
     int color_assignment[3];  // [row, col, color]
+    bool found_solution = false;
     MPI_Status status;
+
+    // Workers should not print progress messages
+    if (g_show_progress && g_mpi_rank != 0) {
+        // Silently disable progress for workers
+    }
 
     while (true) {
         // Request work from master
-        MPI_Send(NULL, 0, MPI_INT, 0, TAG_WORK_REQUEST, MPI_COMM_WORLD);
+        MPI_Send(&found_solution, 1, MPI_C_BOOL, 0, TAG_WORK_REQUEST, MPI_COMM_WORLD);
 
-        // Receive assignment or termination
+        // Receive color assignment or termination signal
         MPI_Recv(color_assignment, 3, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 
         if (status.MPI_TAG == TAG_TERMINATE) {
-            break;  // Master says we're done
+            break;
         }
 
         // Initialize solution with board values
-        memcpy(solution, puzzle->board, sizeof(solution));
+        memcpy(solution, puzzle->board, sizeof(int) * MAX_N * MAX_N);
 
         int row = color_assignment[0];
         int col = color_assignment[1];
         int color = color_assignment[2];
 
-        print_progress("Worker %d trying color %d at (%d,%d)", g_mpi_rank, color, row, col);
-
+        // Set the assigned color
         solution[row][col] = color;
 
         // Try to solve using sequential algorithm
         if (color_g_seq(puzzle, solution, row, col + 1)) {
-            // Found a solution! Report it to the master
-            MPI_Send(NULL, 0, MPI_INT, 0, TAG_SOLUTION_FOUND, MPI_COMM_WORLD);
+            found_solution = true;
+
+            // Send solution to master
+            MPI_Send(&found_solution, 1, MPI_C_BOOL, 0, TAG_SOLUTION_FOUND, MPI_COMM_WORLD);
             MPI_Send(solution, MAX_N * MAX_N, MPI_INT, 0, TAG_SOLUTION_DATA, MPI_COMM_WORLD);
-            print_progress("Worker %d found solution with color %d", g_mpi_rank, color);
+
+            // Wait for termination after finding solution
+            MPI_Recv(color_assignment, 3, MPI_INT, 0, TAG_TERMINATE, MPI_COMM_WORLD, &status);
+            break;
         }
     }
 }
