@@ -12,6 +12,19 @@
 # Exclusive nodes
 #PBS -l place=excl
 
+# Check if a puzzle file argument was provided
+if [ -z "$PUZZLE_FILE" ]; then
+    echo "Error: Puzzle file not specified as an argument." >&2
+    echo "Please submit the job using: qsub your_script.pbs <path_to_your_puzzle>" >&2
+    exit 1
+fi
+
+# Check if the specified puzzle file exists
+if [ ! -f "$PUZZLE_FILE" ]; then
+    echo "Error: Puzzle file '$PUZZLE_FILE' not found!" >&2
+    exit 1
+fi
+
 # Change to submission directory
 cd $PBS_O_WORKDIR
 
@@ -40,6 +53,7 @@ echo "Node: $(hostname)"
 echo "Cores available: $(nproc)"
 echo "Date: $(date)"
 echo "Working directory: $PBS_O_WORKDIR"
+echo "Input puzzle file: $PUZZLE_FILE"
 echo ""
 
 # Function to run a test
@@ -64,7 +78,7 @@ do
     echo "# Testing with $nprocs MPI processes"
     echo "############################################"
     
-    run_test $nprocs "puzzles/9x9_extreme1.txt"
+    run_test $nprocs "$PUZZLE_FILE"
 done
 
 echo ""
