@@ -89,6 +89,10 @@ $(OBJ_DIR)/%.o: %.c | $(OBJ_DIR)
 # This target-specific variable assignment works perfectly with the generic rule above.
 $(OMP_OBJ): CFLAGS += $(OMPFLAGS)
 
+# IMPORTANT: MPI source files must be compiled with mpicc, not gcc!
+# Override the compiler for MPI object files
+$(MPI_OBJ): CC = $(MPICC)
+
 
 # Rule to create the build directories if they don't exist.
 # The '|' makes it an "order-only" prerequisite.
