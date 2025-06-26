@@ -66,7 +66,7 @@ run_test() {
 # Warm-up run
 echo "Performing warm-up run..."
 export OMP_NUM_THREADS=4
-./bin/futoshiki_omp examples/easy/4x4_easy.txt > /dev/null 2>&1
+./bin/futoshiki_omp puzzles/4x4_easy.txt > /dev/null 2>&1
 
 # Scaling tests with different process counts
 for threads in 1 2 4 8 16
@@ -75,7 +75,7 @@ do
     echo "# Testing with $threads OpenMP threads"
     echo "############################################"
     
-    run_test $threads "examples/hard/9x9_extreme1_initial.txt"
+    run_test $threads "puzzles/9x9_extreme1.txt"
 done
 
 echo ""
