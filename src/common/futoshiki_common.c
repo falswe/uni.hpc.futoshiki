@@ -366,36 +366,43 @@ bool color_g_seq(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col
 void print_board(const Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     for (int row = 0; row < puzzle->size; row++) {
         for (int col = 0; col < puzzle->size; col++) {
-            printf(" %d ", solution[row][col]);
+            printf("%2d", solution[row][col]);
+
             if (col < puzzle->size - 1) {
                 switch (puzzle->h_cons[row][col]) {
                     case GREATER:
-                        printf(">");
+                        printf(" > ");
                         break;
                     case SMALLER:
-                        printf("<");
-                        break;
-                    default:
-                        printf(" ");
-                        break;
-                }
-            }
-        }
-        printf("\n");
-        if (row < puzzle->size - 1) {
-            for (int col = 0; col < puzzle->size; col++) {
-                switch (puzzle->v_cons[row][col]) {
-                    case GREATER:
-                        printf(" v ");
-                        break;
-                    case SMALLER:
-                        printf(" ^ ");
+                        printf(" < ");
                         break;
                     default:
                         printf("   ");
                         break;
                 }
-                if (col < puzzle->size - 1) printf(" ");
+            }
+        }
+        printf("\n");
+
+        if (row < puzzle->size - 1) {
+            for (int col = 0; col < puzzle->size; col++) {
+                printf(" ");
+
+                switch (puzzle->v_cons[row][col]) {
+                    case GREATER:
+                        printf("v");
+                        break;
+                    case SMALLER:
+                        printf("^");
+                        break;
+                    default:
+                        printf(" ");
+                        break;
+                }
+
+                if (col < puzzle->size - 1) {
+                    printf("   ");
+                }
             }
             printf("\n");
         }
@@ -406,109 +413,139 @@ void print_board(const Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
 bool parse_futoshiki(const char* input, Futoshiki* puzzle) {
     print_progress("Parsing puzzle input");
 
-    // Initialize everything to 0/NO_CONS
-    memset(puzzle->board, 0, sizeof(puzzle->board));
-    memset(puzzle->h_cons, NO_CONS, sizeof(puzzle->h_cons));
-    memset(puzzle->v_cons, NO_CONS, sizeof(puzzle->v_cons));
+    memset(puzzle, 0, sizeof(Futoshiki));
+    int last_num_relative_positions[MAX_N] = {0};
+    int size = 0;
 
-    // First, determine size by counting numbers in first row
-    char first_line[256];
-    int line_len = 0;
-    while (input[line_len] && input[line_len] != '\n') {
-        first_line[line_len] = input[line_len];
-        line_len++;
-    }
-    first_line[line_len] = '\0';
+    const char* cursor = input;
+    int board_row = 0;
 
-    // Count numbers in first line to determine size
-    puzzle->size = 0;
-    for (int i = 0; i < line_len; i++) {
-        if (isdigit(first_line[i]) || first_line[i] == '0') {
-            puzzle->size++;
+    while (*cursor != '\0' && board_row < MAX_N) {
+
+        // 1. Mark the beginning of the current line, including any whitespace.
+        const char* line_start = cursor;
+
+        // 2. Find the end of the line's content (before newline characters).
+        const char* line_end = line_start;
+        while (*line_end != '\0' && *line_end != '\n' && *line_end != '\r') {
+            line_end++;
         }
-    }
+        int line_len = line_end - line_start;
 
-    if (puzzle->size > MAX_N || puzzle->size == 0) {
-        return false;
-    }
+        // 3. Advance the main cursor past this line and its newline characters for the next iteration.
+        cursor = line_end;
+        if (*cursor == '\r') cursor++;
+        if (*cursor == '\n') cursor++;
 
-    char line[256];
-    const char* line_start = input;
-    int number_row = 0;
-
-    while (*line_start) {
-        // Copy line to buffer
-        line_len = 0;
-        while (line_start[line_len] && line_start[line_len] != '\n') {
-            line[line_len] = line_start[line_len];
-            line_len++;
-        }
-        line[line_len] = '\0';
-
-        // Skip empty lines
-        if (line_len == 0 || line[0] == '\n') {
-            line_start += (line_start[0] == '\n' ? 1 : 0);
-            continue;
-        }
-
-        // Check if this is a constraint line
-        bool is_v_constraint_line = false;
+        // 4. Check if the line we just identified is entirely blank. If so, skip it.
+        bool is_blank = true;
         for (int i = 0; i < line_len; i++) {
-            if (line[i] == '^' || line[i] == 'v' || line[i] == 'V') {
-                is_v_constraint_line = true;
+            if (!isspace((unsigned char)line_start[i])) {
+                is_blank = false;
                 break;
             }
         }
-
-        if (!is_v_constraint_line) {  // Number and horizontal constraint line
-            int col = 0;
-            for (int i = 0; i < line_len && col < puzzle->size; i++) {
-                if (line[i] == ' ') continue;
-
-                if (isdigit(line[i])) {
-                    puzzle->board[number_row][col] = line[i] - '0';
-                    col++;
-                } else if (line[i] == '<' && col > 0) {
-                    puzzle->h_cons[number_row][col - 1] = SMALLER;
-                } else if (line[i] == '>' && col > 0) {
-                    puzzle->h_cons[number_row][col - 1] = GREATER;
-                }
-            }
-            number_row++;
-        } else {  // Vertical constraint line
-            // Create a mapping array for character positions to grid columns
-            int col_positions[MAX_N] = {0};  // Position where each column's number would be
-            int pos = 0;
-            for (int col = 0; col < puzzle->size; col++) {
-                col_positions[col] = pos;
-                pos += (col == puzzle->size - 1) ? 0 : 4;  // 4 spaces between numbers
-            }
-
-            // Now scan the constraint line
-            for (int i = 0; i < line_len; i++) {
-                if (line[i] != '^' && line[i] != 'v' && line[i] != 'V') continue;
-
-                // Find which column this constraint is closest to
-                int col = 0;
-                for (int j = 1; j < puzzle->size; j++) {
-                    if (abs(i - col_positions[j]) < abs(i - col_positions[col])) {
-                        col = j;
-                    }
-                }
-
-                if (col < puzzle->size) {
-                    puzzle->v_cons[number_row - 1][col] = (line[i] == '^') ? SMALLER : GREATER;
-                }
+        if (is_blank) {
+            continue; // Go to the next line.
+        }
+        
+        bool has_digits = false;
+        bool has_v_constraints = false;
+        
+        for (int i = 0; i < line_len; i++) {
+            if (isdigit((unsigned char)line_start[i])) {
+                has_digits = true;
+            } else if (line_start[i] == 'v' || line_start[i] == 'V' || line_start[i] == '^') {
+                has_v_constraints = true;
             }
         }
 
-        line_start += line_len + (line_start[line_len] == '\n' ? 1 : 0);
+        if (has_digits) {
+            // --- This is a NUMBER row ---
+            if (size == 0) {
+                const char* scan_p = line_start;
+                int temp_size = 0;
+                while ((scan_p - line_start) < line_len && temp_size < MAX_N) {
+                    if (isdigit((unsigned char)*scan_p)) {
+                        temp_size++;
+                        while ((scan_p - line_start) < line_len && isdigit((unsigned char)*scan_p)) scan_p++;
+                    } else {
+                        scan_p++;
+                    }
+                }
+                size = temp_size;
+                puzzle->size = size;
+                if (size == 0) return false;
+            }
+
+            int board_col = 0;
+            const char* p = line_start;
+            
+            while ((p - line_start) < line_len && board_col < size) {
+                while ((p - line_start) < line_len && !isdigit((unsigned char)*p)) p++;
+                if ((p - line_start) >= line_len) break;
+
+                last_num_relative_positions[board_col] = p - line_start;
+
+                char* next_p = NULL;
+                puzzle->board[board_row][board_col] = strtol(p, &next_p, 10);
+                p = next_p;
+                if (board_col < size - 1) {
+                    const char* constraint_p = p;
+                    while ((constraint_p - line_start) < line_len && isspace((unsigned char)*constraint_p)) constraint_p++;
+                    
+                    if ((constraint_p - line_start) < line_len) {
+                        if (*constraint_p == '>') {
+                            puzzle->h_cons[board_row][board_col] = GREATER;
+                        } else if (*constraint_p == '<') {
+                            puzzle->h_cons[board_row][board_col] = SMALLER;
+                        }
+                    }
+                }
+                board_col++;
+            }
+            board_row++;
+            
+        } else if (has_v_constraints && board_row > 0) {
+            // --- This is a VERTICAL constraint row ---
+            for (int i = 0; i < line_len; i++) {
+                char v_con_char = line_start[i];
+                if (v_con_char != 'v' && v_con_char != 'V' && v_con_char != '^') {
+                    continue;
+                }
+                
+                int constraint_relative_pos = i;
+                
+                int best_col = -1;
+                int min_dist = abs(constraint_relative_pos - last_num_relative_positions[0]);
+                
+                for (int c = 0; c < size; c++) {
+                    int dist = abs(constraint_relative_pos - last_num_relative_positions[c]);
+                    if (dist < min_dist) {
+                        min_dist = dist;
+                        best_col = c;
+                    }
+                }
+                
+                if (best_col != -1) {
+                    if (v_con_char == 'v' || v_con_char == 'V') {
+                        puzzle->v_cons[board_row - 1][best_col] = GREATER;
+                    } else if (v_con_char == '^') {
+                        puzzle->v_cons[board_row - 1][best_col] = SMALLER;
+                    }
+                }
+            }
+        }
     }
 
-    print_progress("Parsing complete");
-    print_progress("Puzzle size: %d x %d", puzzle->size, puzzle->size);
+    if (size == 0) {
+        printf("Error: Puzzle input appears to be empty or invalid.\n");
+        return false;
+    }
+    
     return true;
 }
+
 
 bool read_puzzle_from_file(const char* filename, Futoshiki* puzzle) {
     print_progress("Reading puzzle file");
