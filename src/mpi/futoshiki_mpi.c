@@ -65,11 +65,6 @@ static void mpi_worker(Futoshiki* puzzle) {
     bool found_solution = false;
     MPI_Status status;
 
-    // Workers should not print progress messages
-    if (g_show_progress && g_mpi_rank != 0) {
-        // Silently disable progress for workers
-    }
-
     while (true) {
         // Request work from master
         MPI_Send(&found_solution, 1, MPI_C_BOOL, 0, TAG_WORK_REQUEST, MPI_COMM_WORLD);
@@ -232,31 +227,45 @@ static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
 SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_solution) {
     SolverStats stats = {0};
     Futoshiki puzzle;
-    double global_start_time = MPI_Wtime();
 
+    // Only master reads the puzzle file
     if (g_mpi_rank == 0) {
         if (!read_puzzle_from_file(filename, &puzzle)) {
-            puzzle.size = -1;  // Signal error
+            // Broadcast failure to all processes
+            int failure = 0;
+            MPI_Bcast(&failure, 1, MPI_INT, 0, MPI_COMM_WORLD);
+            return stats;
+        }
+        // Broadcast success
+        int success = 1;
+        MPI_Bcast(&success, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    } else {
+        // Workers wait for success/failure signal
+        int status;
+        MPI_Bcast(&status, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        if (!status) {
+            return stats;
         }
     }
 
-    // Broadcast the puzzle struct to all processes
+    // Broadcast puzzle to all processes
     MPI_Bcast(&puzzle, sizeof(Futoshiki), MPI_BYTE, 0, MPI_COMM_WORLD);
 
-    if (puzzle.size == -1) {
-        MPI_Barrier(MPI_COMM_WORLD);
-        return stats;  // All processes exit on file read error
-    }
+    // Ensure all processes have received the puzzle
+    MPI_Barrier(MPI_COMM_WORLD);
 
     if (print_solution && g_mpi_rank == 0) {
         printf("Initial puzzle:\n");
-        print_board(&puzzle, puzzle.board);
+        int initial_board[MAX_N][MAX_N];
+        memcpy(initial_board, puzzle.board, sizeof(initial_board));
+        print_board(&puzzle, initial_board);
     }
 
-    // Time the pre-coloring phase
-    double start_precolor = MPI_Wtime();
+    // All processes compute pre-coloring (redundant but ensures consistency)
+    double start_precolor = get_time();
     stats.colors_removed = compute_pc_lists(&puzzle, use_precoloring);
-    stats.precolor_time = MPI_Wtime() - start_precolor;
+    double end_precolor = get_time();
+    stats.precolor_time = end_precolor - start_precolor;
 
     if (print_solution && g_show_progress && g_mpi_rank == 0) {
         print_progress("Possible colors for each cell:");
@@ -269,14 +278,13 @@ SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_
 
     // Time the list-coloring phase
     int solution[MAX_N][MAX_N] = {{0}};
-    MPI_Barrier(MPI_COMM_WORLD);
-    double start_coloring = MPI_Wtime();
+    double start_coloring = get_time();
 
-    stats.found_solution = color_g(&puzzle, solution);
+    stats.found_solution = color_g(&puzzle, solution, 0, 0);
 
-    MPI_Barrier(MPI_COMM_WORLD);
-    stats.coloring_time = MPI_Wtime() - start_coloring;
-    stats.total_time = MPI_Wtime() - global_start_time;
+    double end_coloring = get_time();
+    stats.coloring_time = end_coloring - start_coloring;
+    stats.total_time = stats.precolor_time + stats.coloring_time;
 
     // Calculate remaining colors and total processed
     if (g_mpi_rank == 0) {
