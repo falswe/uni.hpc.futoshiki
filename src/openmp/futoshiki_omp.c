@@ -3,18 +3,55 @@
 #include <omp.h>
 #include <string.h>
 
-// Private helper for this file only -> static
-static bool color_g_seq(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col);
+/**
+ * Parallel solving strategy (shared by OpenMP and MPI):
+ * 1. Find the first empty cell in the puzzle
+ * 2. Distribute its possible color choices among threads/processes
+ * 3. Each thread/process solves its assigned subproblem sequentially
+ * 4. First solution found is returned; others are terminated
+ */
 
-bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col) {
-    print_progress("Starting parallel backtracking with OpenMP");
+// Sequential backtracking algorithm
+static bool color_g_seq(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col) {
+    // Check if we have completed the grid
+    if (row >= puzzle->size) {
+        return true;
+    }
+
+    // Move to the next row when current row is complete
+    if (col >= puzzle->size) {
+        return color_g_seq(puzzle, solution, row + 1, 0);
+    }
+
+    // Skip given cells
+    if (puzzle->board[row][col] != EMPTY) {
+        solution[row][col] = puzzle->board[row][col];
+        return color_g_seq(puzzle, solution, row, col + 1);
+    }
+
+    // Try each possible color for current cell
+    for (int i = 0; i < puzzle->pc_lengths[row][col]; i++) {
+        int color = puzzle->pc_list[row][col][i];
+
+        if (safe(puzzle, row, col, solution, color)) {
+            solution[row][col] = color;
+            if (color_g_seq(puzzle, solution, row, col + 1)) {
+                return true;
+            }
+            solution[row][col] = EMPTY;  // Backtrack
+        }
+    }
+
+    return false;
+}
+
+// Parallelization that creates tasks for first level choices
+bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
+    print_progress("Starting parallel backtracking");
 
     bool found_solution = false;
 
-    // Find first empty cell to parallelize on
-    // TODO: consider the subsequent empty cells for parallelization
-    //       rn only 2 threads are doing the work if there's only 2 colors in the first empty cell
-    //       this could be improved greatly by just going on with other empty cells
+    // Find first empty cell
     int start_row = 0, start_col = 0;
     bool found_empty = false;
 
@@ -35,11 +72,9 @@ bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col) {
         return true;
     }
 
-    print_progress("Parallelizing on first empty cell");
     print_progress("First empty cell at (%d,%d) with %d possible colors", start_row, start_col,
                    puzzle->pc_lengths[start_row][start_col]);
 
-    // Manually create private copies for each task to avoid issues
     int num_colors = puzzle->pc_lengths[start_row][start_col];
     int task_solutions[MAX_N][MAX_N][MAX_N];  // One solution matrix per possible color
 
@@ -102,57 +137,21 @@ bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col) {
     return found_solution;
 }
 
-/**
- * Standard sequential backtracking solver. This is called by each OpenMP task
- * to solve the sub-problem assigned to it.
- */
-static bool color_g_seq(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col) {
-    if (row >= puzzle->size) return true;  // Entire grid has been filled
-
-    int next_row = (col == puzzle->size - 1) ? row + 1 : row;
-    int next_col = (col == puzzle->size - 1) ? 0 : col + 1;
-
-    // If the cell is not empty, it was either part of the original puzzle or
-    // set by a previous step in the recursion. Move to the next cell.
-    if (solution[row][col] != EMPTY) {
-        return color_g_seq(puzzle, solution, next_row, next_col);
-    }
-
-    // Try all valid, pre-filtered colors for this cell.
-    for (int i = 0; i < puzzle->pc_lengths[row][col]; i++) {
-        int color = puzzle->pc_list[row][col][i];
-        if (safe(puzzle, row, col, solution, color)) {
-            solution[row][col] = color;
-            if (color_g_seq(puzzle, solution, next_row, next_col)) {
-                return true;
-            }
-        }
-    }
-    solution[row][col] = EMPTY;  // Backtrack: no valid color worked, so reset and return false.
-    return false;
-}
-
-/**
- * Main solving interface for the OpenMP implementation.
- * It orchestrates the pre-coloring and parallel solving phases.
- */
 SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_solution) {
     SolverStats stats = {0};
     Futoshiki puzzle;
+    double global_start_time = get_time();
 
     if (read_puzzle_from_file(filename, &puzzle)) {
         if (print_solution) {
             printf("Initial puzzle:\n");
-            int initial_board[MAX_N][MAX_N];
-            memcpy(initial_board, puzzle.board, sizeof(initial_board));
-            print_board(&puzzle, initial_board);
+            print_board(&puzzle, puzzle.board);
         }
 
         // Time the pre-coloring phase
         double start_precolor = get_time();
         stats.colors_removed = compute_pc_lists(&puzzle, use_precoloring);
-        double end_precolor = get_time();
-        stats.precolor_time = end_precolor - start_precolor;
+        stats.precolor_time = get_time() - start_precolor;
 
         if (print_solution && g_show_progress) {
             print_progress("Possible colors for each cell:");
@@ -167,11 +166,10 @@ SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_
         int solution[MAX_N][MAX_N] = {{0}};
         double start_coloring = get_time();
 
-        stats.found_solution = color_g(&puzzle, solution, 0, 0);
+        stats.found_solution = color_g(&puzzle, solution);
 
-        double end_coloring = get_time();
-        stats.coloring_time = end_coloring - start_coloring;
-        stats.total_time = stats.precolor_time + stats.coloring_time;
+        stats.coloring_time = get_time() - start_coloring;
+        stats.total_time = get_time() - global_start_time;
 
         // Calculate remaining colors and total processed
         stats.remaining_colors = 0;
