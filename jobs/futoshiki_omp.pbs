@@ -9,6 +9,8 @@
 #PBS -l walltime=00:10:00
 # Chunks (~ Nodes) : Cores per chunk : Shared memory per chunk
 #PBS -l select=1:ncpus=64:mem=8gb
+# Exclusive nodes
+#PBS -l place=excl
 
 # Change to submission directory
 cd $PBS_O_WORKDIR
@@ -49,7 +51,7 @@ export OMP_DISPLAY_ENV=true
 run_test() {
     local threads=$1
     local puzzle=$2
-    local name=$(basename $puzzle .txt
+    local name=$(basename $puzzle .txt)
 
     echo "======================================"
     echo "Test: $name with $threads threads"
