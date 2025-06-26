@@ -7,8 +7,10 @@
 #PBS -q short_cpuQ
 # Expected timespan for execution
 #PBS -l walltime=00:10:00
-# Chunks (~ Nodes) : Cores per chunk : Shared memory per chunk : Exclusive nodes
-#PBS -l select=16:ncpus=1:mem=8gb:place=excl
+# Chunks (~ Nodes) : Cores per chunk : Shared memory per chunk
+#PBS -l select=16:ncpus=1:mem=8gb
+# Exclusive nodes
+#PBS -l place=excl
 
 # Change to submission directory
 cd $PBS_O_WORKDIR
