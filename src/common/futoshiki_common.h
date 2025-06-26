@@ -98,6 +98,16 @@ void process_uniqueness(Futoshiki* puzzle, int row, int col);
 int compute_pc_lists(Futoshiki* puzzle, bool use_precoloring);
 
 /**
+ * Find the first empty cell in the puzzle
+ * @param puzzle The Futoshiki puzzle
+ * @param solution Solution matrix to initialize with board values (optional, can be NULL)
+ * @param row Output parameter for the row of first empty cell
+ * @param col Output parameter for the column of first empty cell
+ * @return true if an empty cell was found, false if puzzle is complete
+ */
+bool find_first_empty_cell(const Futoshiki* puzzle, int solution[MAX_N][MAX_N], int* row, int* col);
+
+/**
  * Sequential backtracking algorithm to solve the Futoshiki puzzle
  * @param puzzle The Futoshiki puzzle
  * @param solution Solution matrix to be filled

@@ -16,22 +16,10 @@ bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     print_progress("Starting parallel backtracking");
 
     bool found_solution = false;
+    int start_row, start_col;
 
-    // Find first empty cell
-    int start_row = 0, start_col = 0;
-    bool found_empty = false;
-
-    for (int r = 0; r < puzzle->size && !found_empty; r++) {
-        for (int c = 0; c < puzzle->size && !found_empty; c++) {
-            if (puzzle->board[r][c] == EMPTY) {
-                start_row = r;
-                start_col = c;
-                found_empty = true;
-            } else {
-                solution[r][c] = puzzle->board[r][c];
-            }
-        }
-    }
+    // Use the common function to find first empty cell
+    bool found_empty = find_first_empty_cell(puzzle, solution, &start_row, &start_col);
 
     if (!found_empty) {
         // No empty cells, puzzle is already solved

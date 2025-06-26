@@ -301,6 +301,36 @@ int compute_pc_lists(Futoshiki* puzzle, bool use_precoloring) {
     return total_colors_removed;
 }
 
+bool find_first_empty_cell(const Futoshiki* puzzle, int solution[MAX_N][MAX_N], int* row,
+                           int* col) {
+    bool found_empty = false;
+
+    for (int r = 0; r < puzzle->size && !found_empty; r++) {
+        for (int c = 0; c < puzzle->size && !found_empty; c++) {
+            if (puzzle->board[r][c] == EMPTY) {
+                *row = r;
+                *col = c;
+                found_empty = true;
+            } else if (solution != NULL) {
+                // Initialize solution with board values as we go
+                solution[r][c] = puzzle->board[r][c];
+            }
+        }
+    }
+
+    // If solution matrix provided, copy remaining board values
+    if (solution != NULL && !found_empty) {
+        // Complete the copy if no empty cell was found
+        for (int r = 0; r < puzzle->size; r++) {
+            for (int c = 0; c < puzzle->size; c++) {
+                solution[r][c] = puzzle->board[r][c];
+            }
+        }
+    }
+
+    return found_empty;
+}
+
 bool color_g_seq(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col) {
     // Check if we have completed the grid
     if (row >= puzzle->size) {

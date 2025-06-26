@@ -71,24 +71,9 @@ static void mpi_worker(Futoshiki* puzzle) {
 static bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     print_progress("Starting parallel backtracking with %d workers", g_mpi_size - 1);
 
-    // Initialize solution with board values
-    memcpy(solution, puzzle->board, sizeof(int) * MAX_N * MAX_N);
-
-    // Find first empty cell
-    int start_row = 0, start_col = 0;
-    bool found_empty = false;
-
-    for (int r = 0; r < puzzle->size && !found_empty; r++) {
-        for (int c = 0; c < puzzle->size && !found_empty; c++) {
-            if (puzzle->board[r][c] == EMPTY) {
-                start_row = r;
-                start_col = c;
-                found_empty = true;
-            } else {
-                solution[r][c] = puzzle->board[r][c];
-            }
-        }
-    }
+    // Use the common function to find first empty cell and initialize solution
+    int start_row, start_col;
+    bool found_empty = find_first_empty_cell(puzzle, solution, &start_row, &start_col);
 
     if (!found_empty) {
         // No empty cells, puzzle is already solved
