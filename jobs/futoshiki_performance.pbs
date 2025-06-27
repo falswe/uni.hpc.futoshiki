@@ -1,0 +1,103 @@
+#!/bin/bash
+
+# PBS script for Futoshiki performance testing
+#PBS -N futoshiki_perf
+
+# Max walltime 6h
+#PBS -q short_cpuQ
+# Expected timespan for execution
+#PBS -l walltime=00:30:00
+# Chunks (~ Nodes) : Cores per chunk : Shared memory per chunk
+#PBS -l select=1:ncpus=64:mem=8gb
+# Exclusive nodes
+#PBS -l place=excl
+
+# Change to submission directory
+cd $PBS_O_WORKDIR
+
+# Load modules
+module load openmpi-4.0.4
+
+# Build all versions
+echo "Building all versions..."
+make clean
+make all -j4
+
+if [ ! -f bin/futoshiki_seq ] || [ ! -f bin/futoshiki_omp ] || [ ! -f bin/futoshiki_mpi ]; then
+    echo "Build failed!"
+    exit 1
+fi
+
+echo ""
+echo "====================================="
+echo "Futoshiki Performance Testing"
+echo "====================================="
+echo "Date: $(date)"
+echo "Node: $(hostname)"
+echo "Working directory: $PBS_O_WORKDIR"
+echo ""
+
+# Function to run a test
+run_test() {
+    local impl=$1
+    local threads=$2
+    local puzzle=$3
+    local name=$(basename $puzzle .txt)
+    
+    echo "--- $impl with $threads thread(s) on $name ---"
+    
+    case $impl in
+        sequential)
+            time ./bin/futoshiki_seq $puzzle
+            ;;
+        openmp)
+            export OMP_NUM_THREADS=$threads
+            export OMP_PROC_BIND=close
+            export OMP_PLACES=cores
+            time ./bin/futoshiki_omp $puzzle
+            ;;
+        mpi)
+            time mpirun -np $threads ./bin/futoshiki_mpi $puzzle
+            ;;
+    esac
+    
+    echo ""
+}
+
+# Test puzzles
+PUZZLES=(
+    "puzzles/9x9_extreme1.txt"
+    "puzzles/9x9_extreme2.txt"
+)
+
+# Run sequential baseline
+echo "============================================"
+echo "Sequential Baseline"
+echo "============================================"
+for puzzle in "${PUZZLES[@]}"; do
+    run_test sequential 1 $puzzle
+done
+
+# OpenMP scaling test
+echo "============================================"
+echo "OpenMP Scaling Test"
+echo "============================================"
+for threads in 1 2 4 8 16 32; do
+    echo ">>> Testing with $threads threads <<<"
+    for puzzle in "${PUZZLES[@]}"; do
+        run_test openmp $threads $puzzle
+    done
+done
+
+# MPI scaling test
+echo "============================================"
+echo "MPI Scaling Test"
+echo "============================================"
+for procs in 1 2 4 8 16; do
+    echo ">>> Testing with $procs processes <<<"
+    for puzzle in "${PUZZLES[@]}"; do
+        run_test mpi $procs $puzzle
+    done
+done
+
+echo "Performance testing completed at $(date)"

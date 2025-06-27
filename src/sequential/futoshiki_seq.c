@@ -1,7 +1,12 @@
 #include "../common/futoshiki_common.h"
 
-// Public solving function
-bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col) {
+/**
+ * Sequential implementation of the Futoshiki solver
+ * Uses backtracking with list coloring optimization
+ */
+
+// Sequential solving entry point
+static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     print_progress("Starting sequential backtracking");
 
     // Initialize solution with board values
@@ -10,65 +15,56 @@ bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col) {
     return color_g_seq(puzzle, solution, 0, 0);
 }
 
-// Main solving function that follows the same interface as other implementations
+// Main solving function
 SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_solution) {
     SolverStats stats = {0};
     Futoshiki puzzle;
 
-    if (read_puzzle_from_file(filename, &puzzle)) {
-        if (print_solution) {
-            printf("Initial puzzle:\n");
-            int initial_board[MAX_N][MAX_N];
-            memcpy(initial_board, puzzle.board, sizeof(initial_board));
-            print_board(&puzzle, initial_board);
-        }
+    if (!read_puzzle_from_file(filename, &puzzle)) {
+        return stats;
+    }
 
-        // Time the pre-coloring phase
-        double start_precolor = get_time();
-        stats.colors_removed = compute_pc_lists(&puzzle, use_precoloring);
-        double end_precolor = get_time();
-        stats.precolor_time = end_precolor - start_precolor;
+    if (print_solution) {
+        printf("Initial puzzle:\n");
+        print_board(&puzzle, puzzle.board);
+    }
 
-        if (print_solution) {
-            print_progress("\nPossible colors for each cell:\n");
-            for (int row = 0; row < puzzle.size; row++) {
-                for (int col = 0; col < puzzle.size; col++) {
-                    print_cell_colors(&puzzle, row, col);
-                }
-            }
-        }
+    // Time the pre-coloring phase
+    double start_precolor = get_time();
+    stats.colors_removed = compute_pc_lists(&puzzle, use_precoloring);
+    stats.precolor_time = get_time() - start_precolor;
 
-        // Time the list-coloring phase
-        int solution[MAX_N][MAX_N] = {{0}};
-        double start_coloring = get_time();
-
-        stats.found_solution = color_g(&puzzle, solution, 0, 0);
-
-        double end_coloring = get_time();
-        stats.coloring_time = end_coloring - start_coloring;
-        stats.total_time = stats.precolor_time + stats.coloring_time;
-
-        // Calculate remaining colors and total processed
-        stats.remaining_colors = 0;
+    if (print_solution && g_show_progress) {
+        print_progress("Possible colors for each cell:");
         for (int row = 0; row < puzzle.size; row++) {
             for (int col = 0; col < puzzle.size; col++) {
-                stats.remaining_colors += puzzle.pc_lengths[row][col];
+                print_cell_colors(&puzzle, row, col);
             }
         }
-        stats.total_processed = puzzle.size * puzzle.size * puzzle.size;
+    }
 
-        if (print_solution) {
-            printf("\nTiming Results:\n");
-            printf("Pre-coloring phase: %.6f seconds\n", stats.precolor_time);
-            printf("List-coloring phase: %.6f seconds\n", stats.coloring_time);
-            printf("Total solving time: %.6f seconds\n", stats.total_time);
+    // Time the solving phase
+    int solution[MAX_N][MAX_N] = {{0}};
+    double start_coloring = get_time();
+    stats.found_solution = color_g(&puzzle, solution);
+    stats.coloring_time = get_time() - start_coloring;
+    stats.total_time = stats.precolor_time + stats.coloring_time;
 
-            if (stats.found_solution) {
-                printf("\nSolution:\n");
-                print_board(&puzzle, solution);
-            } else {
-                printf("\nNo solution found.\n");
-            }
+    // Calculate statistics
+    stats.remaining_colors = 0;
+    for (int row = 0; row < puzzle.size; row++) {
+        for (int col = 0; col < puzzle.size; col++) {
+            stats.remaining_colors += puzzle.pc_lengths[row][col];
+        }
+    }
+    stats.total_processed = puzzle.size * puzzle.size * puzzle.size;
+
+    if (print_solution) {
+        if (stats.found_solution) {
+            printf("\nSolution:\n");
+            print_board(&puzzle, solution);
+        } else {
+            printf("\nNo solution found.\n");
         }
     }
 

@@ -1,17 +1,31 @@
-# built files (without extension)
-# ignore all files
-*
-# un-ignore all directories
-!*/
-# un-ignore all files with extensions
-!*.*
-
-# object files
-*.o
-
-# custom vscode files
-.vscode/
-
-# Build directories
+# Build artifacts
 bin/
 obj/
+*.o
+*.a
+
+# Executables without extension
+futoshiki_seq
+futoshiki_omp
+futoshiki_mpi
+
+# Editor files
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Job outputs
+*.sh.o*
+*.sh.e*
+*.out
+*.err
+
+# Temporary files
+*.tmp
+*.log
+
+# IDE files
+.idea/
+*.iml

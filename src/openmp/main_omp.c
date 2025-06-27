@@ -1,5 +1,4 @@
 #include <omp.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,9 +16,8 @@ int main(int argc, char* argv[]) {
         printf("  -v       : Verbose mode (show progress messages)\n");
         printf("  -t <num> : Set number of OpenMP threads (default: all available)\n");
         printf("\nExamples:\n");
-        printf("  %s puzzles/puz5.txt\n", argv[0]);
-        printf("  %s puzzles/puz9.txt -t 4\n", argv[0]);
-        printf("  %s puzzles/puz9.txt -c -v\n", argv[0]);
+        printf("  %s puzzles/9x9_extreme1.txt\n", argv[0]);
+        printf("  %s puzzles/9x9_extreme1.txt -t 4 -v\n", argv[0]);
         return 1;
     }
 
@@ -38,34 +36,33 @@ int main(int argc, char* argv[]) {
         } else if (strcmp(argv[i], "-v") == 0) {
             verbose = true;
         } else if (strcmp(argv[i], "-t") == 0 && i + 1 < argc) {
-            requested_threads = atoi(argv[++i]);  // Increment i to "-t"
-        } else {
-            printf("Warning: Unknown option '%s' ignored.\n", argv[i]);
+            requested_threads = atoi(argv[++i]);
+            if (requested_threads <= 0) {
+                printf("Error: Invalid thread count\n");
+                return 1;
+            }
         }
     }
 
-    // Configure OpenMP threads
+    // Configure OpenMP
     if (requested_threads > 0) {
         omp_set_num_threads(requested_threads);
     }
 
-    // Set progress display for all modules
     set_progress_display(verbose);
 
     // Print header
     printf("================================\n");
     printf("Futoshiki OpenMP Parallel Solver\n");
     printf("================================\n");
-    printf("Running with %d OpenMP thread(s).\n", omp_get_max_threads());
-    printf("Puzzle file: %s\n", filename);
+    printf("Running with %d OpenMP thread(s)\n", omp_get_max_threads());
+    printf("Puzzle file: %s\n\n", filename);
 
-    // Run in requested mode
+    // Run solver
     if (comparison_mode) {
         run_comparison(filename);
     } else {
-        const char* mode_str = use_precoloring ? "WITH pre-coloring" : "WITHOUT pre-coloring";
-        printf("Mode: Normal solve (%s)\n\n", mode_str);
-
+        printf("Mode: %s pre-coloring\n\n", use_precoloring ? "WITH" : "WITHOUT");
         SolverStats stats = solve_puzzle(filename, use_precoloring, true);
         print_stats(&stats, "OpenMP Solver");
     }

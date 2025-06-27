@@ -12,17 +12,10 @@
 # Exclusive nodes
 #PBS -l place=excl
 
-# Check if a puzzle file argument was provided
-if [ -z "$PUZZLE_FILE" ]; then
-    echo "Error: Puzzle file not specified." >&2
-    echo "Please submit the job using: qsub -v PUZZLE_FILE=\"<path_to_your_puzzle>\" jobs/futoshiki_mpi.pbs>" >&2
-    exit 1
-fi
-
 # Change to submission directory
 cd $PBS_O_WORKDIR
 
-# Load necessary modules
+# Load modules
 module load openmpi-4.0.4
 
 # Build
@@ -35,45 +28,36 @@ if [ ! -f bin/futoshiki_mpi ]; then
     exit 1
 fi
 
-echo "Build successful"
-echo ""
-
 # System information
 echo "===================="
 echo "Futoshiki MPI Solver"
 echo "===================="
 echo "Job ID: $PBS_JOBID"
 echo "Node: $(hostname)"
-echo "Cores available: $(nproc)"
 echo "Date: $(date)"
-echo "Working directory: $PBS_O_WORKDIR"
-echo "Input puzzle file: $PUZZLE_FILE"
 echo ""
 
-# Function to run a test
+# Function to run test
 run_test() {
     local nprocs=$1
     local puzzle=$2
-    local name=$(basename $puzzle .txt)
-
-    echo "======================================"
-    echo "Running $name with $nprocs processes"
-    echo "======================================"
-
+    
+    echo "--- Testing with $nprocs processes ---"
     time mpirun -np $nprocs ./bin/futoshiki_mpi $puzzle
-
     echo ""
 }
 
-# Scaling tests with different process counts
-for nprocs in 1 2 4 8 16
-do
-    echo "############################################"
-    echo "# Testing with $nprocs MPI processes"
-    echo "############################################"
-    
+# Default puzzle if not specified
+if [ -z "$PUZZLE_FILE" ]; then
+    PUZZLE_FILE="puzzles/9x9_extreme1.txt"
+fi
+
+echo "Puzzle: $PUZZLE_FILE"
+echo ""
+
+# Run scaling tests
+for nprocs in 1 2 4 8 16; do
     run_test $nprocs "$PUZZLE_FILE"
 done
 
-echo ""
 echo "Job completed at $(date)"

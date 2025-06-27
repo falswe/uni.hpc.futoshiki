@@ -1,8 +1,6 @@
 #include "futoshiki_mpi.h"
 
 #include <mpi.h>
-#include <stdarg.h>
-#include <stdio.h>
 #include <string.h>
 
 // Strong definitions of MPI rank and size
@@ -10,18 +8,21 @@ int g_mpi_rank = 0;
 int g_mpi_size = 1;
 
 // MPI message tags
-#define TAG_WORK_REQUEST 1
-#define TAG_COLOR_ASSIGNMENT 2
-#define TAG_SOLUTION_FOUND 3
-#define TAG_SOLUTION_DATA 4
-#define TAG_TERMINATE 5
+typedef enum {
+    TAG_WORK_REQUEST = 1,
+    TAG_COLOR_ASSIGNMENT = 2,
+    TAG_SOLUTION_FOUND = 3,
+    TAG_SOLUTION_DATA = 4,
+    TAG_TERMINATE = 5
+} MessageTag;
 
 /**
- * Parallel solving strategy (shared by OpenMP and MPI):
- * 1. Find the first empty cell in the puzzle
- * 2. Distribute its possible color choices among threads/processes
- * 3. Each thread/process solves its assigned subproblem sequentially
- * 4. First solution found is returned; others are terminated
+ * MPI parallel implementation of the Futoshiki solver
+ *
+ * Parallelization strategy:
+ * - Master process distributes color choices to workers
+ * - Workers solve their assigned subproblems
+ * - First solution found terminates all workers
  */
 
 // Worker process function
@@ -35,32 +36,27 @@ static void mpi_worker(Futoshiki* puzzle) {
         // Request work from master
         MPI_Send(&found_solution, 1, MPI_C_BOOL, 0, TAG_WORK_REQUEST, MPI_COMM_WORLD);
 
-        // Receive color assignment or termination signal
+        // Receive assignment or termination
         MPI_Recv(color_assignment, 3, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 
         if (status.MPI_TAG == TAG_TERMINATE) {
             break;
         }
 
-        // Initialize solution with board values
+        // Initialize solution and set assigned color
         memcpy(solution, puzzle->board, sizeof(int) * MAX_N * MAX_N);
-
         int row = color_assignment[0];
         int col = color_assignment[1];
         int color = color_assignment[2];
-
-        // Set the assigned color
         solution[row][col] = color;
 
-        // Try to solve using sequential algorithm
+        // Try to solve
         if (color_g_seq(puzzle, solution, row, col + 1)) {
             found_solution = true;
-
-            // Send solution to master
             MPI_Send(&found_solution, 1, MPI_C_BOOL, 0, TAG_SOLUTION_FOUND, MPI_COMM_WORLD);
             MPI_Send(solution, MAX_N * MAX_N, MPI_INT, 0, TAG_SOLUTION_DATA, MPI_COMM_WORLD);
 
-            // Wait for termination after finding solution
+            // Wait for termination
             MPI_Recv(color_assignment, 3, MPI_INT, 0, TAG_TERMINATE, MPI_COMM_WORLD, &status);
             break;
         }
@@ -69,15 +65,12 @@ static void mpi_worker(Futoshiki* puzzle) {
 
 // Master process function
 static bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
-    print_progress("Starting parallel backtracking with %d workers", g_mpi_size - 1);
+    print_progress("Starting MPI parallel backtracking with %d workers", g_mpi_size - 1);
 
-    // Use the common function to find first empty cell and initialize solution
+    // Find first empty cell
     int start_row, start_col;
-    bool found_empty = find_first_empty_cell(puzzle, solution, &start_row, &start_col);
-
-    if (!found_empty) {
-        // No empty cells, puzzle is already solved
-        return true;
+    if (!find_first_empty_cell(puzzle, solution, &start_row, &start_col)) {
+        return true;  // No empty cells
     }
 
     print_progress("First empty cell at (%d,%d) with %d possible colors", start_row, start_col,
@@ -92,19 +85,18 @@ static bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
         MPI_Status status;
         bool worker_found_solution;
 
-        // Receive work request or solution from any worker
+        // Receive from any worker
         MPI_Recv(&worker_found_solution, 1, MPI_C_BOOL, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD,
                  &status);
 
         if (status.MPI_TAG == TAG_SOLUTION_FOUND && worker_found_solution) {
-            // Worker found a solution
+            // Worker found solution
             found_solution = true;
             MPI_Recv(solution, MAX_N * MAX_N, MPI_INT, status.MPI_SOURCE, TAG_SOLUTION_DATA,
                      MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            print_progress("Received solution from worker %d", status.MPI_SOURCE);
 
-            print_progress("Master received solution from worker %d", status.MPI_SOURCE);
-
-            // Send termination signal to all workers
+            // Terminate all workers
             int terminate_msg[3] = {-1, -1, -1};
             for (int w = 1; w < g_mpi_size; w++) {
                 MPI_Send(terminate_msg, 3, MPI_INT, w, TAG_TERMINATE, MPI_COMM_WORLD);
@@ -112,47 +104,34 @@ static bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
             break;
         }
 
-        // Worker is requesting work
+        // Worker requesting work
         if (next_color_idx < num_colors && !found_solution) {
-            bool assigned_work = false;
-
-            // Try to find a safe color to assign
-            while (next_color_idx < num_colors && !assigned_work) {
+            // Find next safe color
+            bool assigned = false;
+            while (next_color_idx < num_colors && !assigned) {
                 int color = puzzle->pc_list[start_row][start_col][next_color_idx];
-
                 if (safe(puzzle, start_row, start_col, solution, color)) {
-                    int color_assignment[3] = {start_row, start_col, color};
-                    MPI_Send(color_assignment, 3, MPI_INT, status.MPI_SOURCE, TAG_COLOR_ASSIGNMENT,
+                    int assignment[3] = {start_row, start_col, color};
+                    MPI_Send(assignment, 3, MPI_INT, status.MPI_SOURCE, TAG_COLOR_ASSIGNMENT,
                              MPI_COMM_WORLD);
-
-                    print_progress("Master assigned color %d to worker %d", color,
-                                   status.MPI_SOURCE);
-                    next_color_idx++;
-                    assigned_work = true;
-                } else {
-                    // Color is not safe, skip it
-                    print_progress("Color %d is not safe at (%d,%d), skipping", color, start_row,
-                                   start_col);
-                    next_color_idx++;
+                    print_progress("Assigned color %d to worker %d", color, status.MPI_SOURCE);
+                    assigned = true;
                 }
+                next_color_idx++;
             }
 
-            // If no safe color found, terminate this worker
-            if (!assigned_work) {
+            if (!assigned) {
+                // No more work
                 int terminate_msg[3] = {-1, -1, -1};
                 MPI_Send(terminate_msg, 3, MPI_INT, status.MPI_SOURCE, TAG_TERMINATE,
                          MPI_COMM_WORLD);
                 active_workers--;
-                print_progress("No safe colors left for worker %d, %d workers remaining",
-                               status.MPI_SOURCE, active_workers);
             }
         } else {
-            // No more work, send termination signal
+            // No more work
             int terminate_msg[3] = {-1, -1, -1};
             MPI_Send(terminate_msg, 3, MPI_INT, status.MPI_SOURCE, TAG_TERMINATE, MPI_COMM_WORLD);
             active_workers--;
-            print_progress("No more work for worker %d, %d workers remaining", status.MPI_SOURCE,
-                           active_workers);
         }
     }
 
@@ -171,52 +150,39 @@ static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
         return mpi_master(puzzle, solution);
     } else {
         mpi_worker(puzzle);
-        return false;  // Workers don't return solutions directly
+        return false;
     }
 }
 
+// Main solving function
 SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_solution) {
     SolverStats stats = {0};
     Futoshiki puzzle;
 
-    // Only master reads the puzzle file
+    // Master reads puzzle and broadcasts result
     if (g_mpi_rank == 0) {
-        if (!read_puzzle_from_file(filename, &puzzle)) {
-            // Broadcast failure to all processes
-            int failure = 0;
-            MPI_Bcast(&failure, 1, MPI_INT, 0, MPI_COMM_WORLD);
-            return stats;
-        }
-        // Broadcast success
-        int success = 1;
-        MPI_Bcast(&success, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        bool success = read_puzzle_from_file(filename, &puzzle);
+        MPI_Bcast(&success, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
+        if (!success) return stats;
     } else {
-        // Workers wait for success/failure signal
-        int status;
-        MPI_Bcast(&status, 1, MPI_INT, 0, MPI_COMM_WORLD);
-        if (!status) {
-            return stats;
-        }
+        bool success;
+        MPI_Bcast(&success, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
+        if (!success) return stats;
     }
 
     // Broadcast puzzle to all processes
     MPI_Bcast(&puzzle, sizeof(Futoshiki), MPI_BYTE, 0, MPI_COMM_WORLD);
-
-    // Ensure all processes have received the puzzle
     MPI_Barrier(MPI_COMM_WORLD);
 
     if (print_solution && g_mpi_rank == 0) {
         printf("Initial puzzle:\n");
-        int initial_board[MAX_N][MAX_N];
-        memcpy(initial_board, puzzle.board, sizeof(initial_board));
-        print_board(&puzzle, initial_board);
+        print_board(&puzzle, puzzle.board);
     }
 
-    // All processes compute pre-coloring (redundant but ensures consistency)
+    // All processes compute pre-coloring (ensures consistency)
     double start_precolor = get_time();
     stats.colors_removed = compute_pc_lists(&puzzle, use_precoloring);
-    double end_precolor = get_time();
-    stats.precolor_time = end_precolor - start_precolor;
+    stats.precolor_time = get_time() - start_precolor;
 
     if (print_solution && g_show_progress && g_mpi_rank == 0) {
         print_progress("Possible colors for each cell:");
@@ -227,17 +193,14 @@ SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_
         }
     }
 
-    // Time the list-coloring phase
+    // Time the solving phase
     int solution[MAX_N][MAX_N] = {{0}};
     double start_coloring = get_time();
-
     stats.found_solution = color_g(&puzzle, solution);
-
-    double end_coloring = get_time();
-    stats.coloring_time = end_coloring - start_coloring;
+    stats.coloring_time = get_time() - start_coloring;
     stats.total_time = stats.precolor_time + stats.coloring_time;
 
-    // Calculate remaining colors and total processed
+    // Master calculates statistics
     if (g_mpi_rank == 0) {
         stats.remaining_colors = 0;
         for (int row = 0; row < puzzle.size; row++) {
@@ -249,10 +212,10 @@ SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_
 
         if (print_solution) {
             if (stats.found_solution) {
-                printf("Solution:\n");
+                printf("\nSolution:\n");
                 print_board(&puzzle, solution);
             } else {
-                printf("No solution found.\n");
+                printf("\nNo solution found.\n");
             }
         }
     }
