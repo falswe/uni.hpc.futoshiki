@@ -12,6 +12,13 @@
 # Exclusive nodes
 #PBS -l place=excl
 
+# Check if a puzzle file argument was provided
+if [ -z "$PUZZLE_FILE" ]; then
+    echo "Error: Puzzle file not specified." >&2
+    echo "Please submit the job using: qsub -v PUZZLE_FILE=\"<path_to_your_puzzle>\" jobs/futoshiki_omp.pbs" >&2
+    exit 1
+fi
+
 # Change to submission directory
 cd $PBS_O_WORKDIR
 
@@ -40,6 +47,7 @@ echo "Node: $(hostname)"
 echo "Cores available: $(nproc)"
 echo "Date: $(date)"
 echo "Working directory: $PBS_O_WORKDIR"
+echo "Input puzzle file: $PUZZLE_FILE"
 echo ""
 
 # OpenMP environment setup
@@ -75,7 +83,7 @@ do
     echo "# Testing with $threads OpenMP threads"
     echo "############################################"
     
-    run_test $threads "puzzles/9x9_extreme1.txt"
+    run_test $threads "$PUZZLE_FILE"
 done
 
 echo ""

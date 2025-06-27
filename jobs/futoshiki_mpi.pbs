@@ -14,14 +14,8 @@
 
 # Check if a puzzle file argument was provided
 if [ -z "$PUZZLE_FILE" ]; then
-    echo "Error: Puzzle file not specified as an argument." >&2
-    echo "Please submit the job using: qsub your_script.pbs <path_to_your_puzzle>" >&2
-    exit 1
-fi
-
-# Check if the specified puzzle file exists
-if [ ! -f "$PUZZLE_FILE" ]; then
-    echo "Error: Puzzle file '$PUZZLE_FILE' not found!" >&2
+    echo "Error: Puzzle file not specified." >&2
+    echo "Please submit the job using: qsub -v PUZZLE_FILE=\"<path_to_your_puzzle>\" jobs/futoshiki_mpi.pbs>" >&2
     exit 1
 fi
 
