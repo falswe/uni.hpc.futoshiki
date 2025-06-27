@@ -12,6 +12,9 @@
 # Exclusive nodes
 #PBS -l place=excl
 
+# Set stack size as recommended by MXM/UCX
+ulimit -s 10240
+
 # Change to submission directory
 cd $PBS_O_WORKDIR
 
