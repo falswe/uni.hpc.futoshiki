@@ -70,7 +70,7 @@ static bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     // Find first empty cell
     int start_row, start_col;
     if (!find_first_empty_cell(puzzle, solution, &start_row, &start_col)) {
-        return true;  // No empty cells
+        return true;  // No empty cells, puzzle solved.
     }
 
     print_progress("First empty cell at (%d,%d) with %d possible colors", start_row, start_col,
@@ -81,57 +81,56 @@ static bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     bool found_solution = false;
     int active_workers = g_mpi_size - 1;
 
-    while (active_workers > 0 && !found_solution) {
+    while (active_workers > 0) {
         MPI_Status status;
         bool worker_found_solution;
 
         // Receive from any worker
         MPI_Recv(&worker_found_solution, 1, MPI_C_BOOL, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD,
                  &status);
+        int worker_rank = status.MPI_SOURCE;
 
-        if (status.MPI_TAG == TAG_SOLUTION_FOUND && worker_found_solution) {
-            // Worker found solution
-            found_solution = true;
-            MPI_Recv(solution, MAX_N * MAX_N, MPI_INT, status.MPI_SOURCE, TAG_SOLUTION_DATA,
-                     MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            print_progress("Received solution from worker %d", status.MPI_SOURCE);
-
-            // Terminate all workers
+        // If a solution has already been found, we are in "shutdown mode"
+        if (found_solution) {
             int terminate_msg[3] = {-1, -1, -1};
-            for (int w = 1; w < g_mpi_size; w++) {
-                MPI_Send(terminate_msg, 3, MPI_INT, w, TAG_TERMINATE, MPI_COMM_WORLD);
-            }
-            break;
+            MPI_Send(terminate_msg, 3, MPI_INT, worker_rank, TAG_TERMINATE, MPI_COMM_WORLD);
+            active_workers--;
+            continue;  // Go back to waiting for the next worker to check in
         }
 
-        // Worker requesting work
-        if (next_color_idx < num_colors && !found_solution) {
-            // Find next safe color
-            bool assigned = false;
-            while (next_color_idx < num_colors && !assigned) {
-                int color = puzzle->pc_list[start_row][start_col][next_color_idx];
+        if (status.MPI_TAG == TAG_SOLUTION_FOUND && worker_found_solution) {
+            found_solution = true;
+            MPI_Recv(solution, MAX_N * MAX_N, MPI_INT, worker_rank, TAG_SOLUTION_DATA,
+                     MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            print_progress("Received solution from worker %d", worker_rank);
+
+            // Terminate the successful worker.
+            int terminate_msg[3] = {-1, -1, -1};
+            MPI_Send(terminate_msg, 3, MPI_INT, worker_rank, TAG_TERMINATE, MPI_COMM_WORLD);
+            active_workers--;
+        }
+        // Otherwise, the worker is requesting work
+        else {
+            bool assigned_work = false;
+            // Try to assign the next available, safe color
+            while (next_color_idx < num_colors) {
+                int color = puzzle->pc_list[start_row][start_col][next_color_idx++];
                 if (safe(puzzle, start_row, start_col, solution, color)) {
                     int assignment[3] = {start_row, start_col, color};
-                    MPI_Send(assignment, 3, MPI_INT, status.MPI_SOURCE, TAG_COLOR_ASSIGNMENT,
+                    MPI_Send(assignment, 3, MPI_INT, worker_rank, TAG_COLOR_ASSIGNMENT,
                              MPI_COMM_WORLD);
-                    print_progress("Assigned color %d to worker %d", color, status.MPI_SOURCE);
-                    assigned = true;
+                    print_progress("Assigned color %d to worker %d", color, worker_rank);
+                    assigned_work = true;
+                    break;
                 }
-                next_color_idx++;
             }
 
-            if (!assigned) {
-                // No more work
+            // If no work could be assigned (no more colors), terminate this worker
+            if (!assigned_work) {
                 int terminate_msg[3] = {-1, -1, -1};
-                MPI_Send(terminate_msg, 3, MPI_INT, status.MPI_SOURCE, TAG_TERMINATE,
-                         MPI_COMM_WORLD);
+                MPI_Send(terminate_msg, 3, MPI_INT, worker_rank, TAG_TERMINATE, MPI_COMM_WORLD);
                 active_workers--;
             }
-        } else {
-            // No more work
-            int terminate_msg[3] = {-1, -1, -1};
-            MPI_Send(terminate_msg, 3, MPI_INT, status.MPI_SOURCE, TAG_TERMINATE, MPI_COMM_WORLD);
-            active_workers--;
         }
     }
 
