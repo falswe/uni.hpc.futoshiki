@@ -421,7 +421,6 @@ bool parse_futoshiki(const char* input, Futoshiki* puzzle) {
     int board_row = 0;
 
     while (*cursor != '\0' && board_row < MAX_N) {
-
         // 1. Mark the beginning of the current line, including any whitespace.
         const char* line_start = cursor;
 
@@ -432,7 +431,8 @@ bool parse_futoshiki(const char* input, Futoshiki* puzzle) {
         }
         int line_len = line_end - line_start;
 
-        // 3. Advance the main cursor past this line and its newline characters for the next iteration.
+        // 3. Advance the main cursor past this line and its newline characters for the next
+        // iteration.
         cursor = line_end;
         if (*cursor == '\r') cursor++;
         if (*cursor == '\n') cursor++;
@@ -446,12 +446,12 @@ bool parse_futoshiki(const char* input, Futoshiki* puzzle) {
             }
         }
         if (is_blank) {
-            continue; // Go to the next line.
+            continue;  // Go to the next line.
         }
-        
+
         bool has_digits = false;
         bool has_v_constraints = false;
-        
+
         for (int i = 0; i < line_len; i++) {
             if (isdigit((unsigned char)line_start[i])) {
                 has_digits = true;
@@ -468,7 +468,8 @@ bool parse_futoshiki(const char* input, Futoshiki* puzzle) {
                 while ((scan_p - line_start) < line_len && temp_size < MAX_N) {
                     if (isdigit((unsigned char)*scan_p)) {
                         temp_size++;
-                        while ((scan_p - line_start) < line_len && isdigit((unsigned char)*scan_p)) scan_p++;
+                        while ((scan_p - line_start) < line_len && isdigit((unsigned char)*scan_p))
+                            scan_p++;
                     } else {
                         scan_p++;
                     }
@@ -480,7 +481,7 @@ bool parse_futoshiki(const char* input, Futoshiki* puzzle) {
 
             int board_col = 0;
             const char* p = line_start;
-            
+
             while ((p - line_start) < line_len && board_col < size) {
                 while ((p - line_start) < line_len && !isdigit((unsigned char)*p)) p++;
                 if ((p - line_start) >= line_len) break;
@@ -492,8 +493,10 @@ bool parse_futoshiki(const char* input, Futoshiki* puzzle) {
                 p = next_p;
                 if (board_col < size - 1) {
                     const char* constraint_p = p;
-                    while ((constraint_p - line_start) < line_len && isspace((unsigned char)*constraint_p)) constraint_p++;
-                    
+                    while ((constraint_p - line_start) < line_len &&
+                           isspace((unsigned char)*constraint_p))
+                        constraint_p++;
+
                     if ((constraint_p - line_start) < line_len) {
                         if (*constraint_p == '>') {
                             puzzle->h_cons[board_row][board_col] = GREATER;
@@ -505,7 +508,7 @@ bool parse_futoshiki(const char* input, Futoshiki* puzzle) {
                 board_col++;
             }
             board_row++;
-            
+
         } else if (has_v_constraints && board_row > 0) {
             // --- This is a VERTICAL constraint row ---
             for (int i = 0; i < line_len; i++) {
@@ -513,21 +516,21 @@ bool parse_futoshiki(const char* input, Futoshiki* puzzle) {
                 if (v_con_char != 'v' && v_con_char != 'V' && v_con_char != '^') {
                     continue;
                 }
-                
+
                 int constraint_relative_pos = i;
-                
-                int best_col = -1;
+
+                int best_col = 0;
                 int min_dist = abs(constraint_relative_pos - last_num_relative_positions[0]);
-                
-                for (int c = 0; c < size; c++) {
+
+                for (int c = 1; c < size; c++) {
                     int dist = abs(constraint_relative_pos - last_num_relative_positions[c]);
                     if (dist < min_dist) {
                         min_dist = dist;
                         best_col = c;
                     }
                 }
-                
-                if (best_col != -1) {
+
+                if (best_col >= 0) {
                     if (v_con_char == 'v' || v_con_char == 'V') {
                         puzzle->v_cons[board_row - 1][best_col] = GREATER;
                     } else if (v_con_char == '^') {
@@ -542,10 +545,9 @@ bool parse_futoshiki(const char* input, Futoshiki* puzzle) {
         printf("Error: Puzzle input appears to be empty or invalid.\n");
         return false;
     }
-    
+
     return true;
 }
-
 
 bool read_puzzle_from_file(const char* filename, Futoshiki* puzzle) {
     print_progress("Reading puzzle file");
