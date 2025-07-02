@@ -319,18 +319,33 @@ static bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
                 MPI_Send(&work_units[next_unit], sizeof(WorkUnit), MPI_BYTE, worker_rank,
                          TAG_WORK_ASSIGNMENT, MPI_COMM_WORLD);
 
-                // TODO: remove these debug prints
                 print_progress("Assigned work unit %d/%d to worker %d", next_unit + 1, num_units,
                                worker_rank);
 
                 WorkUnit* unit = &work_units[next_unit];
-                printf("[DEBUG] Work unit %d: depth=%d, assignments=", next_unit + 1, unit->depth);
+                const int max_assingments_str_len = 64;
+                char assignments_str[max_assingments_str_len];
+                int offset = 0;
+                assignments_str[0] = '\0';  // Ensure the string is initially empty.
+
                 for (int i = 0; i < unit->depth; i++) {
-                    printf(" (%d,%d,%d)", unit->assignments[i * 3], unit->assignments[i * 3 + 1],
-                           unit->assignments[i * 3 + 2]);
+                    int remaining_space = max_assingments_str_len - offset;
+                    int chars_written =
+                        snprintf(assignments_str + offset, remaining_space, " (%d,%d,%d)",
+                                 unit->assignments[i * 3], unit->assignments[i * 3 + 1],
+                                 unit->assignments[i * 3 + 2]);
+
+                    // If snprintf failed or the buffer is full, stop appending.
+                    if (chars_written <= 0 || chars_written >= remaining_space) {
+                        // Append "..." to indicate truncation
+                        strncat(assignments_str, "...", 3);
+                        break;
+                    }
+                    offset += chars_written;
                 }
-                printf("\n");
-                fflush(stdout);
+
+                print_progress("Work unit %d: depth=%d, assignments=%s", next_unit + 1, unit->depth,
+                               assignments_str);
 
                 next_unit++;
             } else {
