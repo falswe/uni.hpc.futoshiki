@@ -25,7 +25,7 @@ NPROCS=${NPROCS:-4}
 cd $PBS_O_WORKDIR
 
 # Load modules
-module load openmpi-4.0.4
+module load mpich-3.2
 
 # Build
 echo "Building MPI version..."
@@ -50,7 +50,7 @@ echo ""
 
 # Run the test
 echo "--- Testing with $NPROCS processes on $PUZZLE_FILE ---"
-time mpirun -np $NPROCS ./bin/futoshiki_mpi "$PUZZLE_FILE"
+time mpirun.actual -np $NPROCS ./bin/futoshiki_mpi "$PUZZLE_FILE"
 echo ""
 
 echo "Job completed at $(date)"
