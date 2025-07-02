@@ -24,20 +24,67 @@ typedef struct {
 } WorkUnit;
 
 /**
- * Calculate the appropriate depth for work distribution
+ * Recursively counts the number of valid partial solutions at a specific depth.
+ * This is used to accurately determine the number of work units before generating them.
+ */
+static long long count_valid_assignments_recursive(Futoshiki* puzzle,
+                                                   int solution[MAX_N][MAX_N],
+                                                   int empty_cells[MAX_N * MAX_N][2],
+                                                   int num_empty_cells, int current_cell_idx,
+                                                   int target_depth) {
+    // If we have reached the target depth, we have found one valid assignment path.
+    if (current_cell_idx >= target_depth) {
+        return 1;
+    }
+
+    // This should not happen if target_depth <= num_empty_cells, but it's a safe guard.
+    if (current_cell_idx >= num_empty_cells) {
+        return 1;
+    }
+
+    long long count = 0;
+    int row = empty_cells[current_cell_idx][0];
+    int col = empty_cells[current_cell_idx][1];
+
+    // Iterate through all possible colors for the current empty cell.
+    for (int i = 0; i < puzzle->pc_lengths[row][col]; i++) {
+        int color = puzzle->pc_list[row][col][i];
+
+        // Check if placing this color is valid given the current partial solution.
+        if (safe(puzzle, row, col, solution, color)) {
+            // If it's safe, apply the color to the solution.
+            solution[row][col] = color;
+
+            // Recursively call for the next cell in the sequence.
+            count += count_valid_assignments_recursive(puzzle, solution, empty_cells,
+                                                       num_empty_cells, current_cell_idx + 1,
+                                                       target_depth);
+
+            // Backtrack: remove the color to explore other possibilities.
+            solution[row][col] = EMPTY;
+        }
+    }
+
+    return count;
+}
+
+/**
+ * Calculate the appropriate depth for work distribution by *exactly* counting
+ * the number of valid partial solutions at each depth.
  */
 static int calculate_distribution_depth(Futoshiki* puzzle, int num_workers) {
-    // If there are no workers, we don't need to generate sub-tasks for distribution.
+    double start_time = get_time();
+
     if (num_workers <= 0) {
         return 0;
     }
 
-    // Set a reasonable max depth to prevent excessive work unit generation and memory usage.
+    // Set a reasonable max depth to prevent excessive upfront computation.
     int max_depth = 5;
     if (puzzle->size > 9) max_depth = 4;
     if (puzzle->size > 15) max_depth = 3;
 
-    // Find the sequence of empty cells to explore for job generation.
+    // Find the sequence of empty cells to be filled.
     int empty_cells[MAX_N * MAX_N][2];
     int num_empty = 0;
     for (int r = 0; r < puzzle->size; r++) {
@@ -55,38 +102,46 @@ static int calculate_distribution_depth(Futoshiki* puzzle, int num_workers) {
         return 0;
     }
 
-    // Find the smallest depth 'd' where the estimated number of jobs > num_workers.
-    long long estimated_jobs = 1;
+    print_progress("Job Distribution Strategy:");
+    print_progress("  - Target: >%d jobs for %d workers.", num_workers, num_workers);
+
     int chosen_depth = 0;
+    long long job_count = 0;
 
-    for (int d = 0; d < num_empty && d < max_depth; ++d) {
-        int row = empty_cells[d][0];
-        int col = empty_cells[d][1];
-        int branching_factor = puzzle->pc_lengths[row][col];
+    // A temporary solution grid for the recursive counting.
+    int temp_solution[MAX_N][MAX_N];
+    memcpy(temp_solution, puzzle->board, sizeof(temp_solution));
 
-        if (branching_factor <= 0) {
-            branching_factor = 1;  // Dead-end path won't increase sub-problems.
+    // Find the smallest depth 'd' where the number of jobs is > num_workers.
+    for (int d = 1; d <= num_empty && d <= max_depth; d++) {
+        memcpy(temp_solution, puzzle->board, sizeof(temp_solution));
+        job_count = count_valid_assignments_recursive(puzzle, temp_solution, empty_cells, num_empty, 0, d);
+
+        print_progress("  - Depth %d check: found exactly %lld valid work units.", d, job_count);
+        
+        chosen_depth = d;
+
+        if (job_count > num_workers) {
+            print_progress("  - Depth %d is sufficient. Final choice.", chosen_depth);
+            break; 
         }
 
-        // Check for potential overflow before multiplication.
-        if (branching_factor > 1 && estimated_jobs > LLONG_MAX / branching_factor) {
-            estimated_jobs = LLONG_MAX;  // Mark as huge, will be > num_workers.
-        } else {
-            estimated_jobs *= branching_factor;
-        }
-
-        chosen_depth = d + 1;
-
-        if (estimated_jobs > num_workers) {
-            break;  // Found the minimal depth that exceeds worker count.
+        if (d == num_empty && job_count <= num_workers) {
+             print_progress("  - Reached max possible depth (%d), using all %lld jobs.", d, job_count);
+        } else if (d == max_depth && job_count <= num_workers) {
+             print_progress("  - Reached configured max_depth (%d), using %lld jobs. This may be fewer than available workers.", d, job_count);
         }
     }
 
-    print_progress("Job Distribution Strategy:");
-    print_progress("  - Target: >%d jobs for %d workers.", num_workers, num_workers);
-    print_progress("  - Chosen depth: %d (estimated to generate ~%lld work units)", chosen_depth,
-                   estimated_jobs);
-
+    if (job_count == 0 && num_empty > 0) {
+        print_progress("WARNING: No valid work units could be generated even at minimal depth. Puzzle might be unsolvable.");
+        // We can return 0 here because generate_work_units will also find 0 units and trigger the fallback.
+    }
+    
+    double end_time = get_time();
+    print_progress("Depth calculation took %.6f seconds.", end_time - start_time);
+    
+    print_progress("  - Chosen depth: %d (will generate %lld work units)", chosen_depth, job_count);
     return chosen_depth;
 }
 
