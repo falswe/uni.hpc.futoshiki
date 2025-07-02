@@ -4,7 +4,7 @@
 #
 
 usage() {
-    echo "Usage: $0 <job_type> <puzzle_file> [num_procs_or_threads]"
+    echo "Usage: $0 <job_type> <puzzle_file> <num_procs_or_threads>"
     echo ""
     echo "Job types:"
     echo "  perf    - Run performance scaling tests (no extra args)"
