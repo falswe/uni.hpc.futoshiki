@@ -317,8 +317,16 @@ static bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
                 MPI_Send(&work_units[next_unit], sizeof(WorkUnit), MPI_BYTE, worker_rank,
                          TAG_WORK_ASSIGNMENT, MPI_COMM_WORLD);
                 if (next_unit < 10 || next_unit % 10 == 0) {
-                    print_progress("Assigned work unit %d/%d to worker %d", next_unit + 1,
+                    print_progress("Assigned work unit %d/%d to worker %d\n", next_unit + 1,
                                    num_units, worker_rank);
+                    // Let's print the work unit for debugging
+                    WorkUnit* unit = &work_units[next_unit];
+                    printf("Work unit %d: depth=%d, assignments=", next_unit + 1, unit->depth);
+                    for (int i = 0; i < unit->depth; i++) {
+                        printf(" (%d, %d, %d)", unit->assignments[i * 3],
+                               unit->assignments[i * 3 + 1], unit->assignments[i * 3 + 2]);
+                    }
+                    printf("\n");
                 }
                 next_unit++;
             } else {
