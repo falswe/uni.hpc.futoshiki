@@ -63,6 +63,9 @@ $(OBJ_DIR)/%.o: %.c | $(OBJ_DIR)
 $(OMP_OBJ): CFLAGS += $(OMPFLAGS)
 
 # === Directory Creation ===
+# Ensure bin and obj directories exist before trying to use them
+$(SEQ_TARGET) $(OMP_TARGET) $(MPI_TARGET): | $(BIN_DIR) $(OBJ_DIR)
+
 $(BIN_DIR) $(OBJ_DIR):
 	@mkdir -p $@
 
