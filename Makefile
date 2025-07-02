@@ -20,7 +20,10 @@ OMP_SRC    := $(wildcard $(SRC_DIR)/openmp/*.c)
 MPI_SRC    := $(wildcard $(SRC_DIR)/mpi/*.c)
 
 # === Object Files ===
-COMMON_OBJ := $(patsubst $(SRC_DIR)/common/%.c,$(OBJ_DIR)/%.o,$(COMMON_SRC))
+# We will define a separate set of common objects for MPI
+COMMON_OBJ_GCC := $(patsubst $(SRC_DIR)/common/%.c,$(OBJ_DIR)/gcc.%.o,$(COMMON_SRC))
+COMMON_OBJ_MPI := $(patsubst $(SRC_DIR)/common/%.c,$(OBJ_DIR)/mpi.%.o,$(COMMON_SRC))
+
 SEQ_OBJ    := $(patsubst $(SRC_DIR)/sequential/%.c,$(OBJ_DIR)/%.o,$(SEQ_SRC))
 OMP_OBJ    := $(patsubst $(SRC_DIR)/openmp/%.c,$(OBJ_DIR)/%.o,$(OMP_SRC))
 MPI_OBJ    := $(patsubst $(SRC_DIR)/mpi/%.c,$(OBJ_DIR)/%.o,$(MPI_SRC))
@@ -43,26 +46,32 @@ mpi: $(MPI_TARGET)
 
 # === Build Rules ===
 
-$(SEQ_TARGET): $(SEQ_OBJ) $(COMMON_OBJ) | $(BIN_DIR)
+$(SEQ_TARGET): $(SEQ_OBJ) $(COMMON_OBJ_GCC) | $(BIN_DIR)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-$(OMP_TARGET): $(OMP_OBJ) $(COMMON_OBJ) | $(BIN_DIR)
+$(OMP_TARGET): $(OMP_OBJ) $(COMMON_OBJ_GCC) | $(BIN_DIR)
 	$(CC) $(CFLAGS) $(OMPFLAGS) $^ -o $@ $(LDFLAGS)
 
-$(MPI_TARGET): $(MPI_OBJ) $(COMMON_OBJ) | $(BIN_DIR)
+$(MPI_TARGET): $(MPI_OBJ) $(COMMON_OBJ_MPI) | $(BIN_DIR)
 	$(MPICC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 # === Compilation Rules ===
 VPATH = $(SRC_DIR)/common:$(SRC_DIR)/sequential:$(SRC_DIR)/openmp:$(SRC_DIR)/mpi
 
+# Rule for GCC compiled objects
 $(OBJ_DIR)/%.o: %.c | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+# Rule for GCC compiled common objects
+$(OBJ_DIR)/gcc.%.o: %.c | $(OBJ_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Rule for MPI compiled common objects
+$(OBJ_DIR)/mpi.%.o: %.c | $(OBJ_DIR)
+	$(MPICC) $(CFLAGS) -c $< -o $@
+
 # Add OpenMP flags for OpenMP objects
 $(OMP_OBJ): CFLAGS += $(OMPFLAGS)
-
-# Use MPI compiler for MPI objects
-$(MPI_OBJ): CC = $(MPICC)
 
 # === Directory Creation ===
 $(BIN_DIR) $(OBJ_DIR):
