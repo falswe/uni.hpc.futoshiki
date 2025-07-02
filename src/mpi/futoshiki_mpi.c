@@ -55,7 +55,7 @@ static int calculate_distribution_depth(Futoshiki* puzzle, int num_workers) {
         return 0;
     }
 
-    // Find the smallest depth 'd' where the estimated number of jobs >= num_workers.
+    // Find the smallest depth 'd' where the estimated number of jobs > num_workers.
     long long estimated_jobs = 1;
     int chosen_depth = 0;
 
@@ -77,7 +77,7 @@ static int calculate_distribution_depth(Futoshiki* puzzle, int num_workers) {
 
         chosen_depth = d + 1;
 
-        if (estimated_jobs >= num_workers) {
+        if (estimated_jobs > num_workers) {
             break;  // Found the minimal depth that exceeds worker count.
         }
     }
@@ -279,7 +279,6 @@ static bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     int next_unit = 0;
     bool found_solution = false;
     int active_workers = g_mpi_size - 1;
-    int workers_started = 0;
     WorkUnit dummy_unit = {0};
 
     print_progress("Waiting for %d workers to start...", active_workers);
@@ -315,28 +314,24 @@ static bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
             print_progress("Worker %d terminated (solution found), %d workers remaining",
                            worker_rank, active_workers);
         } else {
-            // Worker is requesting work
-            workers_started++;
-            if (workers_started <= 10 || workers_started % 10 == 0) {
-                print_progress("Worker %d started (%d/%d workers active)", worker_rank,
-                               workers_started, g_mpi_size - 1);
-            }
-
+            // Worker is requesting work.
             if (next_unit < num_units) {
                 MPI_Send(&work_units[next_unit], sizeof(WorkUnit), MPI_BYTE, worker_rank,
                          TAG_WORK_ASSIGNMENT, MPI_COMM_WORLD);
-                if (next_unit < 10 || next_unit % 10 == 0) {
-                    print_progress("Assigned work unit %d/%d to worker %d\n", next_unit + 1,
-                                   num_units, worker_rank);
-                    // Let's print the work unit for debugging
-                    WorkUnit* unit = &work_units[next_unit];
-                    printf("Work unit %d: depth=%d, assignments=", next_unit + 1, unit->depth);
-                    for (int i = 0; i < unit->depth; i++) {
-                        printf(" (%d, %d, %d)", unit->assignments[i * 3],
-                               unit->assignments[i * 3 + 1], unit->assignments[i * 3 + 2]);
-                    }
-                    printf("\n");
+
+                // TODO: remove these debug prints
+                print_progress("Assigned work unit %d/%d to worker %d", next_unit + 1, num_units,
+                               worker_rank);
+
+                WorkUnit* unit = &work_units[next_unit];
+                printf("[DEBUG] Work unit %d: depth=%d, assignments=", next_unit + 1, unit->depth);
+                for (int i = 0; i < unit->depth; i++) {
+                    printf(" (%d,%d,%d)", unit->assignments[i * 3], unit->assignments[i * 3 + 1],
+                           unit->assignments[i * 3 + 2]);
                 }
+                printf("\n");
+                fflush(stdout);
+
                 next_unit++;
             } else {
                 // No more work
