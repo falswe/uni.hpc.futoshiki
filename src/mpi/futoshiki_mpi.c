@@ -1,5 +1,6 @@
 #include "futoshiki_mpi.h"
 
+#include <limits.h>
 #include <mpi.h>
 #include <string.h>
 
@@ -11,23 +12,144 @@ int g_mpi_size = 1;
 typedef enum {
     TAG_WORK_REQUEST = 1,
     TAG_COLOR_ASSIGNMENT = 2,
-    TAG_WORK_ASSIGNMENT = 3,
-    TAG_SOLUTION_FOUND = 4,
-    TAG_SOLUTION_DATA = 5,
-    TAG_TERMINATE = 6
+    TAG_SOLUTION_DATA = 3,
+    TAG_TERMINATE = 4,
+    TAG_WORK_ASSIGNMENT = 5
 } MessageTag;
 
 // Structure to represent a partial solution (work unit)
 typedef struct {
     int depth;                   // How many cells have been filled
-    int assignments[MAX_N * 2];  // [row1, col1, color1, row2, col2, color2, ...]
+    int assignments[MAX_N * 3];  // [row1, col1, color1, row2, col2, color2, ...]
 } WorkUnit;
 
 /**
+ * Original single-level worker process function
+ */
+static void mpi_worker_single_level(Futoshiki* puzzle) {
+    int solution[MAX_N][MAX_N];
+    int color_assignment[3];  // [row, col, color]
+    bool found_solution = false;
+    MPI_Status status;
+
+    while (true) {
+        // Request work from master
+        MPI_Send(&found_solution, 1, MPI_C_BOOL, 0, TAG_WORK_REQUEST, MPI_COMM_WORLD);
+
+        // Receive assignment or termination
+        MPI_Recv(color_assignment, 3, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+
+        if (status.MPI_TAG == TAG_TERMINATE) {
+            break;
+        }
+
+        // Initialize solution and set assigned color
+        memcpy(solution, puzzle->board, sizeof(int) * MAX_N * MAX_N);
+        int row = color_assignment[0];
+        int col = color_assignment[1];
+        int color = color_assignment[2];
+        solution[row][col] = color;
+
+        // Try to solve
+        if (color_g_seq(puzzle, solution, row, col + 1)) {
+            found_solution = true;
+            // First send the boolean flag with work request tag
+            MPI_Send(&found_solution, 1, MPI_C_BOOL, 0, TAG_WORK_REQUEST, MPI_COMM_WORLD);
+            // Then send the solution data
+            MPI_Send(solution, MAX_N * MAX_N, MPI_INT, 0, TAG_SOLUTION_DATA, MPI_COMM_WORLD);
+
+            // Wait for termination
+            MPI_Recv(color_assignment, 3, MPI_INT, 0, TAG_TERMINATE, MPI_COMM_WORLD, &status);
+            break;
+        }
+    }
+}
+
+/**
+ * Original single-level master process function
+ */
+static bool mpi_master_single_level(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
+    print_progress("Starting MPI parallel backtracking with %d workers", g_mpi_size - 1);
+
+    // Find first empty cell
+    int start_row, start_col;
+    if (!find_first_empty_cell(puzzle, solution, &start_row, &start_col)) {
+        return true;  // No empty cells, puzzle solved.
+    }
+
+    print_progress("First empty cell at (%d,%d) with %d possible colors", start_row, start_col,
+                   puzzle->pc_lengths[start_row][start_col]);
+
+    int num_colors = puzzle->pc_lengths[start_row][start_col];
+    int next_color_idx = 0;
+    bool found_solution = false;
+    int active_workers = g_mpi_size - 1;
+
+    while (active_workers > 0) {
+        MPI_Status status;
+        bool worker_found_solution;
+
+        // Receive work request from any worker (expecting TAG_WORK_REQUEST)
+        MPI_Recv(&worker_found_solution, 1, MPI_C_BOOL, MPI_ANY_SOURCE, TAG_WORK_REQUEST,
+                 MPI_COMM_WORLD, &status);
+        int worker_rank = status.MPI_SOURCE;
+
+        // If a solution has already been found, we are in "shutdown mode"
+        if (found_solution) {
+            int terminate_msg[3] = {-1, -1, -1};
+            MPI_Send(terminate_msg, 3, MPI_INT, worker_rank, TAG_TERMINATE, MPI_COMM_WORLD);
+            active_workers--;
+            continue;
+        }
+
+        if (worker_found_solution) {
+            // Worker claims to have found a solution, receive it
+            found_solution = true;
+            MPI_Recv(solution, MAX_N * MAX_N, MPI_INT, worker_rank, TAG_SOLUTION_DATA,
+                     MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            print_progress("Received solution from worker %d", worker_rank);
+
+            // Terminate the successful worker
+            int terminate_msg[3] = {-1, -1, -1};
+            MPI_Send(terminate_msg, 3, MPI_INT, worker_rank, TAG_TERMINATE, MPI_COMM_WORLD);
+            active_workers--;
+        } else {
+            // Worker is requesting work
+            bool assigned_work = false;
+            // Try to assign the next available, safe color
+            while (next_color_idx < num_colors) {
+                int color = puzzle->pc_list[start_row][start_col][next_color_idx++];
+                if (safe(puzzle, start_row, start_col, solution, color)) {
+                    int assignment[3] = {start_row, start_col, color};
+                    MPI_Send(assignment, 3, MPI_INT, worker_rank, TAG_COLOR_ASSIGNMENT,
+                             MPI_COMM_WORLD);
+                    print_progress("Assigned color %d to worker %d", color, worker_rank);
+                    assigned_work = true;
+                    break;
+                }
+            }
+
+            // If no work could be assigned, terminate this worker
+            if (!assigned_work) {
+                int terminate_msg[3] = {-1, -1, -1};
+                MPI_Send(terminate_msg, 3, MPI_INT, worker_rank, TAG_TERMINATE, MPI_COMM_WORLD);
+                active_workers--;
+            }
+        }
+    }
+
+    return found_solution;
+}
+
+/**
  * Calculate the appropriate depth for work distribution
- * We want at least num_workers * 2 work units for good load balancing
  */
 static int calculate_distribution_depth(Futoshiki* puzzle, int num_workers) {
+    // For very large number of workers, limit depth to avoid memory issues
+    int max_depth = 4;
+    if (num_workers > 32) max_depth = 3;
+    if (num_workers > 64) max_depth = 2;
+
     int target_units = num_workers * 2;  // Aim for 2x oversubscription
     int current_units = 1;
     int depth = 0;
@@ -47,18 +169,28 @@ static int calculate_distribution_depth(Futoshiki* puzzle, int num_workers) {
     }
 
     // Simulate depth exploration
-    while (depth < num_empty && current_units < target_units) {
+    while (depth < num_empty && depth < max_depth && current_units < target_units) {
         int row = empty_cells[depth][0];
         int col = empty_cells[depth][1];
         int branching = puzzle->pc_lengths[row][col];
 
+        // Avoid overflow
+        if (current_units > 0 && branching > 0 && current_units > INT_MAX / branching) {
+            break;
+        }
+
         current_units *= branching;
         depth++;
 
-        // Don't go too deep - limit to reasonable depth
-        if (depth > 5 || current_units > num_workers * 100) {
+        // Don't generate too many work units
+        if (current_units > num_workers * 20) {
             break;
         }
+    }
+
+    // Ensure we have at least depth 1
+    if (depth == 0 && num_empty > 0) {
+        depth = 1;
     }
 
     print_progress("Distribution depth: %d (estimated %d work units for %d workers)", depth,
@@ -69,12 +201,17 @@ static int calculate_distribution_depth(Futoshiki* puzzle, int num_workers) {
 
 /**
  * Generate all valid partial solutions up to the specified depth
- * Uses recursive enumeration to build work units
  */
 static void generate_work_units_recursive(Futoshiki* puzzle, int solution[MAX_N][MAX_N],
                                           WorkUnit** units, int* unit_count, int* capacity,
                                           int current_depth, int target_depth, int* assignments,
                                           int row, int col) {
+    // Safety limit - don't generate too many work units
+    if (*unit_count >= 10000) {
+        print_progress("WARNING: Work unit limit reached (%d units)", *unit_count);
+        return;
+    }
+
     // Find next empty cell
     while (row < puzzle->size) {
         if (col >= puzzle->size) {
@@ -92,8 +229,17 @@ static void generate_work_units_recursive(Futoshiki* puzzle, int solution[MAX_N]
     if (current_depth >= target_depth || row >= puzzle->size) {
         // Create a work unit
         if (*unit_count >= *capacity) {
-            *capacity *= 2;
-            *units = realloc(*units, *capacity * sizeof(WorkUnit));
+            int new_capacity = *capacity * 2;
+            if (new_capacity > 10000) new_capacity = 10000;  // Hard limit
+            if (new_capacity <= *capacity) return;           // Can't grow anymore
+
+            WorkUnit* new_units = realloc(*units, new_capacity * sizeof(WorkUnit));
+            if (!new_units) {
+                print_progress("WARNING: Failed to expand work unit array");
+                return;
+            }
+            *units = new_units;
+            *capacity = new_capacity;
         }
 
         WorkUnit* unit = &(*units)[*unit_count];
@@ -129,33 +275,41 @@ static void generate_work_units_recursive(Futoshiki* puzzle, int solution[MAX_N]
  * Generate all work units up to the calculated depth
  */
 static WorkUnit* generate_work_units(Futoshiki* puzzle, int depth, int* num_units) {
-    int capacity = 100;
+    // Limit initial capacity to prevent excessive memory allocation
+    int capacity = (g_mpi_size - 1) * 4;   // Start with 4x workers
+    if (capacity > 1000) capacity = 1000;  // Cap at 1000
+
     WorkUnit* units = malloc(capacity * sizeof(WorkUnit));
+    if (!units) {
+        print_progress("ERROR: Failed to allocate memory for work units");
+        *num_units = 0;
+        return NULL;
+    }
+
     *num_units = 0;
 
     int solution[MAX_N][MAX_N];
     memcpy(solution, puzzle->board, sizeof(solution));
 
-    int assignments[MAX_N * 2 * 3];  // row, col, color for each assignment
+    int assignments[MAX_N * 3];  // row, col, color for each assignment
 
     generate_work_units_recursive(puzzle, solution, &units, num_units, &capacity, 0, depth,
                                   assignments, 0, 0);
 
     print_progress("Generated %d work units at depth %d", *num_units, depth);
 
+    // Shrink to actual size
+    if (*num_units > 0 && *num_units < capacity) {
+        WorkUnit* shrunk = realloc(units, *num_units * sizeof(WorkUnit));
+        if (shrunk) units = shrunk;
+    }
+
     return units;
 }
 
 /**
- * MPI parallel implementation of the Futoshiki solver
- *
- * Parallelization strategy:
- * - Master process distributes color choices to workers
- * - Workers solve their assigned subproblems
- * - First solution found terminates all workers
+ * Worker process function with multi-level work units
  */
-
-// Worker process function
 static void mpi_worker(Futoshiki* puzzle) {
     int solution[MAX_N][MAX_N];
     WorkUnit work_unit;
@@ -194,7 +348,9 @@ static void mpi_worker(Futoshiki* puzzle) {
         // Try to solve from this partial solution
         if (color_g_seq(puzzle, solution, start_row, start_col)) {
             found_solution = true;
-            MPI_Send(&found_solution, 1, MPI_C_BOOL, 0, TAG_SOLUTION_FOUND, MPI_COMM_WORLD);
+            // First send the boolean flag with work request tag
+            MPI_Send(&found_solution, 1, MPI_C_BOOL, 0, TAG_WORK_REQUEST, MPI_COMM_WORLD);
+            // Then send the solution data
             MPI_Send(solution, MAX_N * MAX_N, MPI_INT, 0, TAG_SOLUTION_DATA, MPI_COMM_WORLD);
 
             // Wait for termination
@@ -205,7 +361,9 @@ static void mpi_worker(Futoshiki* puzzle) {
     }
 }
 
-// Master process function
+/**
+ * Master process function with multi-level distribution
+ */
 static bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     print_progress("Starting MPI parallel backtracking with %d workers", g_mpi_size - 1);
 
@@ -216,26 +374,32 @@ static bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     int num_units;
     WorkUnit* work_units = generate_work_units(puzzle, depth, &num_units);
 
-    if (num_units == 0) {
-        print_progress("No work units generated - puzzle may already be solved");
+    if (!work_units || num_units == 0) {
+        print_progress("No work units generated - falling back to sequential");
+        if (work_units) free(work_units);
         memcpy(solution, puzzle->board, sizeof(int) * MAX_N * MAX_N);
-        free(work_units);
         return color_g_seq(puzzle, solution, 0, 0);
     }
+
+    print_progress("Starting distribution of %d work units to %d workers", num_units,
+                   g_mpi_size - 1);
 
     // Distribute work units
     int next_unit = 0;
     bool found_solution = false;
     int active_workers = g_mpi_size - 1;
+    int workers_started = 0;
     WorkUnit dummy_unit = {0};
+
+    print_progress("Waiting for %d workers to start...", active_workers);
 
     while (active_workers > 0) {
         MPI_Status status;
         bool worker_found_solution;
 
-        // Receive from any worker
-        MPI_Recv(&worker_found_solution, 1, MPI_C_BOOL, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD,
-                 &status);
+        // Receive work request from any worker (expecting TAG_WORK_REQUEST)
+        MPI_Recv(&worker_found_solution, 1, MPI_C_BOOL, MPI_ANY_SOURCE, TAG_WORK_REQUEST,
+                 MPI_COMM_WORLD, &status);
         int worker_rank = status.MPI_SOURCE;
 
         if (found_solution) {
@@ -246,7 +410,8 @@ static bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
             continue;
         }
 
-        if (status.MPI_TAG == TAG_SOLUTION_FOUND && worker_found_solution) {
+        if (worker_found_solution) {
+            // Worker claims to have found a solution, receive it
             found_solution = true;
             MPI_Recv(solution, MAX_N * MAX_N, MPI_INT, worker_rank, TAG_SOLUTION_DATA,
                      MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -256,19 +421,31 @@ static bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
             MPI_Send(&dummy_unit, sizeof(WorkUnit), MPI_BYTE, worker_rank, TAG_TERMINATE,
                      MPI_COMM_WORLD);
             active_workers--;
+            print_progress("Worker %d terminated (solution found), %d workers remaining",
+                           worker_rank, active_workers);
         } else {
             // Worker is requesting work
+            workers_started++;
+            if (workers_started <= 10 || workers_started % 10 == 0) {
+                print_progress("Worker %d started (%d/%d workers active)", worker_rank,
+                               workers_started, g_mpi_size - 1);
+            }
+
             if (next_unit < num_units) {
                 MPI_Send(&work_units[next_unit], sizeof(WorkUnit), MPI_BYTE, worker_rank,
                          TAG_WORK_ASSIGNMENT, MPI_COMM_WORLD);
-                print_progress("Assigned work unit %d/%d to worker %d", next_unit + 1, num_units,
-                               worker_rank);
+                if (next_unit < 10 || next_unit % 10 == 0) {
+                    print_progress("Assigned work unit %d/%d to worker %d", next_unit + 1,
+                                   num_units, worker_rank);
+                }
                 next_unit++;
             } else {
                 // No more work
                 MPI_Send(&dummy_unit, sizeof(WorkUnit), MPI_BYTE, worker_rank, TAG_TERMINATE,
                          MPI_COMM_WORLD);
                 active_workers--;
+                print_progress("Worker %d terminated (no more work), %d workers remaining",
+                               worker_rank, active_workers);
             }
         }
     }
@@ -277,7 +454,9 @@ static bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     return found_solution;
 }
 
-// Main solving dispatcher
+/**
+ * Main solving dispatcher
+ */
 static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     if (g_mpi_size == 1) {
         print_progress("Only 1 process available, using sequential algorithm");
