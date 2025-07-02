@@ -27,19 +27,19 @@ typedef struct {
  * Calculate the appropriate depth for work distribution
  */
 static int calculate_distribution_depth(Futoshiki* puzzle, int num_workers) {
-    // For very large number of workers, limit depth to avoid memory issues
-    int max_depth = 4;
-    if (num_workers > 32) max_depth = 3;
-    if (num_workers > 64) max_depth = 2;
+    // If there are no workers, we don't need to generate sub-tasks for distribution.
+    if (num_workers <= 0) {
+        return 0;
+    }
 
-    int target_units = num_workers * 2;  // Aim for 2x oversubscription
-    int current_units = 1;
-    int depth = 0;
+    // Set a reasonable max depth to prevent excessive work unit generation and memory usage.
+    int max_depth = 5;
+    if (puzzle->size > 9) max_depth = 4;
+    if (puzzle->size > 15) max_depth = 3;
 
-    // Find empty cells and estimate branching factor
+    // Find the sequence of empty cells to explore for job generation.
     int empty_cells[MAX_N * MAX_N][2];
     int num_empty = 0;
-
     for (int r = 0; r < puzzle->size; r++) {
         for (int c = 0; c < puzzle->size; c++) {
             if (puzzle->board[r][c] == EMPTY) {
@@ -50,35 +50,44 @@ static int calculate_distribution_depth(Futoshiki* puzzle, int num_workers) {
         }
     }
 
-    // Simulate depth exploration
-    while (depth < num_empty && depth < max_depth && current_units < target_units) {
-        int row = empty_cells[depth][0];
-        int col = empty_cells[depth][1];
-        int branching = puzzle->pc_lengths[row][col];
+    if (num_empty == 0) {
+        print_progress("Puzzle has no empty cells; no work to distribute.");
+        return 0;
+    }
 
-        // Avoid overflow
-        if (current_units > 0 && branching > 0 && current_units > INT_MAX / branching) {
-            break;
+    // Find the smallest depth 'd' where the estimated number of jobs >= num_workers.
+    long long estimated_jobs = 1;
+    int chosen_depth = 0;
+
+    for (int d = 0; d < num_empty && d < max_depth; ++d) {
+        int row = empty_cells[d][0];
+        int col = empty_cells[d][1];
+        int branching_factor = puzzle->pc_lengths[row][col];
+
+        if (branching_factor <= 0) {
+            branching_factor = 1;  // Dead-end path won't increase sub-problems.
         }
 
-        current_units *= branching;
-        depth++;
+        // Check for potential overflow before multiplication.
+        if (branching_factor > 1 && estimated_jobs > LLONG_MAX / branching_factor) {
+            estimated_jobs = LLONG_MAX;  // Mark as huge, will be > num_workers.
+        } else {
+            estimated_jobs *= branching_factor;
+        }
 
-        // Don't generate too many work units
-        if (current_units > num_workers * 20) {
-            break;
+        chosen_depth = d + 1;
+
+        if (estimated_jobs >= num_workers) {
+            break;  // Found the minimal depth that exceeds worker count.
         }
     }
 
-    // Ensure we have at least depth 1
-    if (depth == 0 && num_empty > 0) {
-        depth = 1;
-    }
+    print_progress("Job Distribution Strategy:");
+    print_progress("  - Target: >%d jobs for %d workers.", num_workers, num_workers);
+    print_progress("  - Chosen depth: %d (estimated to generate ~%lld work units)", chosen_depth,
+                   estimated_jobs);
 
-    print_progress("Distribution depth: %d (estimated %d work units for %d workers)", depth,
-                   current_units, num_workers);
-
-    return depth;
+    return chosen_depth;
 }
 
 /**
