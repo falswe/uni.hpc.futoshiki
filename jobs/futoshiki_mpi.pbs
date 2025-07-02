@@ -7,13 +7,19 @@
 #PBS -q short_cpuQ
 # Expected timespan for execution
 #PBS -l walltime=00:10:00
-# Chunks (~ Nodes) : Cores per chunk : Shared memory per chunk
-#PBS -l select=16:ncpus=1:mem=8gb
 # Exclusive nodes
 #PBS -l place=excl
 
+# NOTE: The 'select' line is now provided by the submit_job.sh script.
+# This script will receive $PUZZLE_FILE and $NPROCS from the environment.
+# Chunks (~ Nodes) : Cores per chunk : Shared memory per chunk
+# #PBS -l select=16:ncpus=1:mem=8gb
+
 # Set stack size as recommended by MXM/UCX
 ulimit -s 10240
+
+# Set a default process count in case NPROCS isn't passed (for manual runs)
+NPROCS=${NPROCS:-4}
 
 # Change to submission directory
 cd $PBS_O_WORKDIR
@@ -38,29 +44,13 @@ echo "===================="
 echo "Job ID: $PBS_JOBID"
 echo "Node: $(hostname)"
 echo "Date: $(date)"
-echo ""
-
-# Function to run test
-run_test() {
-    local nprocs=$1
-    local puzzle=$2
-    
-    echo "--- Testing with $nprocs processes ---"
-    time mpirun -np $nprocs ./bin/futoshiki_mpi $puzzle
-    echo ""
-}
-
-# Default puzzle if not specified
-if [ -z "$PUZZLE_FILE" ]; then
-    PUZZLE_FILE="puzzles/9x9_extreme1.txt"
-fi
-
 echo "Puzzle: $PUZZLE_FILE"
+echo "Processes: $NPROCS"
 echo ""
 
-# Run scaling tests
-for nprocs in 1 2 4 8 16; do
-    run_test $nprocs "$PUZZLE_FILE"
-done
+# Run the test
+echo "--- Testing with $NPROCS processes on $PUZZLE_FILE ---"
+time mpirun -np $NPROCS ./bin/futoshiki_mpi "$PUZZLE_FILE"
+echo ""
 
 echo "Job completed at $(date)"

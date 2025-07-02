@@ -4,17 +4,17 @@
 #
 
 usage() {
-    echo "Usage: $0 <job_type> [puzzle_file]"
+    echo "Usage: $0 <job_type> <puzzle_file> [num_procs_or_threads]"
     echo ""
     echo "Job types:"
-    echo "  perf    - Run performance scaling tests"
-    echo "  omp     - Run OpenMP solver on a puzzle"
-    echo "  mpi     - Run MPI solver on a puzzle"
+    echo "  perf    - Run performance scaling tests (no extra args)"
+    echo "  omp     - Run OpenMP solver on a puzzle with a specific thread count"
+    echo "  mpi     - Run MPI solver on a puzzle with a specific process count"
     echo ""
     echo "Examples:"
-    echo "  $0 perf                          # Run performance tests"
-    echo "  $0 omp puzzles/9x9_extreme1.txt  # Run OpenMP solver"
-    echo "  $0 mpi puzzles/11x11_hard_1.txt  # Run MPI solver"
+    echo "  $0 perf"
+    echo "  $0 omp puzzles/9x9_extreme1.txt 8   # Run OpenMP with 8 threads"
+    echo "  $0 mpi puzzles/11x11_hard_1.txt 16  # Run MPI with 16 processes"
     exit 1
 }
 
@@ -24,6 +24,7 @@ fi
 
 JOB_TYPE=$1
 PUZZLE_FILE=$2
+NPROCS=$3
 
 case $JOB_TYPE in
     perf)
@@ -32,21 +33,33 @@ case $JOB_TYPE in
         ;;
     
     omp)
-        if [ -z "$PUZZLE_FILE" ]; then
-            echo "Error: Puzzle file required for OpenMP job"
+        if [ -z "$PUZZLE_FILE" ] || [ -z "$NPROCS" ]; then
+            echo "Error: Puzzle file and thread count required for OpenMP job"
             usage
         fi
-        echo "Submitting OpenMP job for $PUZZLE_FILE..."
-        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_omp.pbs
+        
+        # OpenMP needs N cores on a single node
+        RESOURCES="select=1:ncpus=${NPROCS}:mem=8gb"
+        
+        echo "Submitting OpenMP job for $PUZZLE_FILE with $NPROCS threads..."
+        echo "Requesting resources: $RESOURCES"
+        
+        qsub -l "$RESOURCES" -v PUZZLE_FILE="$PUZZLE_FILE",NPROCS="$NPROCS" jobs/futoshiki_omp.pbs
         ;;
     
     mpi)
-        if [ -z "$PUZZLE_FILE" ]; then
-            echo "Error: Puzzle file required for MPI job"
+        if [ -z "$PUZZLE_FILE" ] || [ -z "$NPROCS" ]; then
+            echo "Error: Puzzle file and process count required for MPI job"
             usage
         fi
-        echo "Submitting MPI job for $PUZZLE_FILE..."
-        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_mpi.pbs
+        
+        # MPI needs N nodes, 1 core per node (for this use case)
+        RESOURCES="select=${NPROCS}:ncpus=1:mem=2gb"
+        
+        echo "Submitting MPI job for $PUZZLE_FILE with $NPROCS processes..."
+        echo "Requesting resources: $RESOURCES"
+        
+        qsub -l "$RESOURCES" -v PUZZLE_FILE="$PUZZLE_FILE",NPROCS="$NPROCS" jobs/futoshiki_mpi.pbs
         ;;
     
     *)
