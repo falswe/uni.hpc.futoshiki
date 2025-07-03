@@ -17,6 +17,7 @@ cd $PBS_O_WORKDIR
 
 # Load modules
 module load openmpi-4.0.4
+module load mpich-3.2
 
 # Build all versions
 echo "Building all versions..."
@@ -57,7 +58,7 @@ run_test() {
             time ./bin/futoshiki_omp $puzzle
             ;;
         mpi)
-            time mpirun -np $threads ./bin/futoshiki_mpi $puzzle
+            time mpirun.actual -np $threads ./bin/futoshiki_mpi $puzzle
             ;;
     esac
     
@@ -67,7 +68,7 @@ run_test() {
 # Test puzzles
 PUZZLES=(
     "puzzles/9x9_extreme1.txt"
-    "puzzles/9x9_extreme2.txt"
+    "puzzles/9x9_extreme3.txt"
 )
 
 # Run sequential baseline
@@ -82,7 +83,7 @@ done
 echo "============================================"
 echo "OpenMP Scaling Test"
 echo "============================================"
-for threads in 1 2 4 8 16 32; do
+for threads in 1 2 4 8 16 32 64; do
     echo ">>> Testing with $threads threads <<<"
     for puzzle in "${PUZZLES[@]}"; do
         run_test openmp $threads $puzzle
@@ -93,7 +94,7 @@ done
 echo "============================================"
 echo "MPI Scaling Test"
 echo "============================================"
-for procs in 1 2 4 8 16; do
+for procs in 1 2 4 8 16 32 64 128 256; do
     echo ">>> Testing with $procs processes <<<"
     for puzzle in "${PUZZLES[@]}"; do
         run_test mpi $procs $puzzle
