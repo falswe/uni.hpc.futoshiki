@@ -380,7 +380,7 @@ static bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
                                worker_rank);
 
                 WorkUnit* unit = &work_units[next_unit];
-                const int max_assingments_str_len = 64;
+                const int max_assingments_str_len = 256;
                 char assignments_str[max_assingments_str_len];
                 int offset = 0;
                 assignments_str[0] = '\0';
