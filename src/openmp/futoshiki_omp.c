@@ -3,71 +3,70 @@
 #include <omp.h>
 #include <string.h>
 
-/**
- * OpenMP parallel implementation of the Futoshiki solver
- *
- * Parallelization strategy:
- * 1. Find the first empty cell in the puzzle
- * 2. Create parallel tasks for each possible color choice
- * 3. Each task solves its subproblem sequentially
- * 4. First solution found terminates other tasks
- */
+#include "../common/parallel_work_distribution.h"
+
 
 // Parallel solving with OpenMP tasks
 static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     print_progress("Starting OpenMP parallel backtracking");
 
     bool found_solution = false;
-    int start_row, start_col;
 
-    // Find first empty cell and initialize solution
-    if (!find_first_empty_cell(puzzle, solution, &start_row, &start_col)) {
-        return true;  // No empty cells, puzzle already solved
+    // Calculate optimal depth for task generation
+    int num_threads = omp_get_max_threads();
+    int target_tasks = num_threads * 4;  // Generate more tasks than threads for load balancing
+    int depth = calculate_distribution_depth(puzzle, target_tasks);
+
+    if (depth == 0) {
+        // No empty cells or calculation failed
+        memcpy(solution, puzzle->board, sizeof(int) * MAX_N * MAX_N);
+        return color_g_seq(puzzle, solution, 0, 0);
     }
 
-    print_progress("First empty cell at (%d,%d) with %d possible colors", start_row, start_col,
-                   puzzle->pc_lengths[start_row][start_col]);
+    // Generate work units (partial solutions)
+    int num_work_units;
+    WorkUnit* work_units = generate_work_units(puzzle, depth, &num_work_units);
 
-    int num_colors = puzzle->pc_lengths[start_row][start_col];
-
-    // Allocate solution storage for each task
-    int(*task_solutions)[MAX_N][MAX_N] = calloc(num_colors, sizeof(*task_solutions));
-    if (!task_solutions) {
-        print_progress("Failed to allocate memory for parallel solutions");
-        return false;
+    if (!work_units || num_work_units == 0) {
+        print_progress("No work units generated - falling back to sequential");
+        if (work_units) free(work_units);
+        memcpy(solution, puzzle->board, sizeof(int) * MAX_N * MAX_N);
+        return color_g_seq(puzzle, solution, 0, 0);
     }
 
+    print_progress("Generated %d tasks at depth %d", num_work_units, depth);
+
+// Process work units in parallel
 #pragma omp parallel
     {
 #pragma omp single
         {
-            print_progress("Using %d OpenMP threads", omp_get_num_threads());
+            print_progress("Processing %d tasks with %d threads", num_work_units,
+                           omp_get_num_threads());
 
-            // Create tasks for each possible color at the first empty cell
-            for (int i = 0; i < num_colors && !found_solution; i++) {
-                int color = puzzle->pc_list[start_row][start_col][i];
+            for (int i = 0; i < num_work_units && !found_solution; i++) {
+                WorkUnit* wu = &work_units[i];
 
-                if (safe(puzzle, start_row, start_col, solution, color)) {
-#pragma omp task firstprivate(i, color) shared(found_solution, task_solutions)
-                    {
-                        print_progress("Thread %d trying color %d at (%d,%d)", omp_get_thread_num(),
-                                       color, start_row, start_col);
-
-                        // Create a local copy of the solution
+#pragma omp task firstprivate(i) shared(found_solution)
+                {
+                    if (!found_solution) {  // Early exit check
+                        // Create local solution
                         int local_solution[MAX_N][MAX_N];
-                        memcpy(local_solution, solution, sizeof(local_solution));
-                        local_solution[start_row][start_col] = color;
+                        apply_work_unit(puzzle, wu, local_solution);
 
-                        // Try to solve sequentially from this point
-                        if (color_g_seq(puzzle, local_solution, start_row, start_col + 1)) {
+                        // Find where to continue
+                        int start_row, start_col;
+                        get_continuation_point(wu, &start_row, &start_col);
+
+                        // Try to complete the solution
+                        if (color_g_seq(puzzle, local_solution, start_row, start_col)) {
 #pragma omp critical
                             {
                                 if (!found_solution) {
                                     found_solution = true;
-                                    memcpy(task_solutions[i], local_solution,
-                                           sizeof(local_solution));
-                                    print_progress("Thread %d found solution with color %d",
-                                                   omp_get_thread_num(), color);
+                                    memcpy(solution, local_solution, sizeof(local_solution));
+                                    print_progress("Thread %d found solution from task %d",
+                                                   omp_get_thread_num(), i);
                                 }
                             }
                         }
@@ -75,22 +74,11 @@ static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
                 }
             }
 
-            print_progress("Waiting for all tasks to complete");
 #pragma omp taskwait
         }
     }
 
-    // Copy successful solution to output
-    if (found_solution) {
-        for (int i = 0; i < num_colors; i++) {
-            if (task_solutions[i][start_row][start_col] != 0) {
-                memcpy(solution, task_solutions[i], sizeof(int) * MAX_N * MAX_N);
-                break;
-            }
-        }
-    }
-
-    free(task_solutions);
+    free(work_units);
     return found_solution;
 }
 
