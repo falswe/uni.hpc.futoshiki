@@ -5,52 +5,52 @@
 #include "futoshiki_mpi.h"
 
 int main(int argc, char* argv[]) {
-    // Initialize MPI
     init_mpi(&argc, &argv);
 
-    // Only master validates arguments
     if (argc < 2) {
         if (g_mpi_rank == 0) {
             fprintf(stderr, "Usage: %s <puzzle_file> [options]\n", argv[0]);
             fprintf(stderr, "Options:\n");
             fprintf(stderr, "  -n : Disable pre-coloring optimization\n");
-            fprintf(stderr, "  -v : Verbose mode (show progress messages)\n");
+            fprintf(stderr, "  -q : Quiet mode (only essential results and errors)\n");
+            fprintf(stderr, "  -v : Verbose mode (shows progress and details)\n");
+            fprintf(stderr, "  -d : Debug mode (shows all messages)\n");
         }
         finalize_mpi();
         return 1;
     }
 
-    // Parse options
     const char* filename = argv[1];
     bool use_precoloring = true;
-    bool verbose = false;
+    LogLevel log_level = LOG_INFO;
 
     for (int i = 2; i < argc; i++) {
         if (strcmp(argv[i], "-n") == 0) {
             use_precoloring = false;
+        } else if (strcmp(argv[i], "-q") == 0) {
+            log_level = LOG_ESSENTIAL;
         } else if (strcmp(argv[i], "-v") == 0) {
-            verbose = true;
+            log_level = LOG_VERBOSE;
+        } else if (strcmp(argv[i], "-d") == 0) {
+            log_level = LOG_DEBUG;
         }
     }
 
-    set_progress_display(verbose);
+    logger_init(log_level);
 
-    // Master prints header
     if (g_mpi_rank == 0) {
-        printf("=============================\n");
-        printf("Futoshiki MPI Parallel Solver\n");
-        printf("=============================\n");
-        printf("Running with %d processes\n", g_mpi_size);
-        printf("Puzzle file: %s\n", filename);
-        printf("Mode: %s pre-coloring\n\n", use_precoloring ? "WITH" : "WITHOUT");
+        log_info("=============================");
+        log_info("Futoshiki MPI Parallel Solver");
+        log_info("=============================");
+        log_info("Running with %d processes", g_mpi_size);
+        log_info("Puzzle file: %s", filename);
+        log_info("Mode: %s pre-coloring\n", use_precoloring ? "WITH" : "WITHOUT");
     }
 
-    // All processes participate in solving
-    SolverStats stats = solve_puzzle(filename, use_precoloring, true);
+    SolverStats stats = solve_puzzle(filename, use_precoloring, g_mpi_rank == 0);
 
-    // Master prints results
     if (g_mpi_rank == 0 && stats.found_solution) {
-        printf("\n--- Final Statistics ---\n");
+        log_info("\n--- Final Statistics ---");
         print_stats(&stats, "MPI Solver");
     }
 

@@ -13,56 +13,49 @@ int main(int argc, char* argv[]) {
         printf("Options:\n");
         printf("  -c       : Run comparison mode (with vs without pre-coloring)\n");
         printf("  -n       : Disable pre-coloring optimization\n");
-        printf("  -v       : Verbose mode (show progress messages)\n");
+        printf("  -q       : Quiet mode (only essential results and errors)\n");
+        printf("  -v       : Verbose mode (shows progress and details)\n");
+        printf("  -d       : Debug mode (shows all messages)\n");
         printf("  -t <num> : Set number of OpenMP threads (default: all available)\n");
-        printf("\nExamples:\n");
-        printf("  %s puzzles/9x9_extreme1.txt\n", argv[0]);
-        printf("  %s puzzles/9x9_extreme1.txt -t 4 -v\n", argv[0]);
         return 1;
     }
 
-    // Parse command-line options
     const char* filename = argv[1];
     bool use_precoloring = true;
-    bool verbose = false;
     bool comparison_mode = false;
+    LogLevel log_level = LOG_INFO;
     int requested_threads = 0;
 
     for (int i = 2; i < argc; i++) {
-        if (strcmp(argv[i], "-c") == 0) {
-            comparison_mode = true;
-        } else if (strcmp(argv[i], "-n") == 0) {
-            use_precoloring = false;
-        } else if (strcmp(argv[i], "-v") == 0) {
-            verbose = true;
-        } else if (strcmp(argv[i], "-t") == 0 && i + 1 < argc) {
+        if (strcmp(argv[i], "-c") == 0) comparison_mode = true;
+        else if (strcmp(argv[i], "-n") == 0) use_precoloring = false;
+        else if (strcmp(argv[i], "-q") == 0) log_level = LOG_ESSENTIAL;
+        else if (strcmp(argv[i], "-v") == 0) log_level = LOG_VERBOSE;
+        else if (strcmp(argv[i], "-d") == 0) log_level = LOG_DEBUG;
+        else if (strcmp(argv[i], "-t") == 0 && i + 1 < argc) {
             requested_threads = atoi(argv[++i]);
             if (requested_threads <= 0) {
-                printf("Error: Invalid thread count\n");
+                fprintf(stderr, "Error: Invalid thread count\n");
                 return 1;
             }
         }
     }
 
-    // Configure OpenMP
     if (requested_threads > 0) {
         omp_set_num_threads(requested_threads);
     }
+    logger_init(log_level);
 
-    set_progress_display(verbose);
+    log_info("================================");
+    log_info("Futoshiki OpenMP Parallel Solver");
+    log_info("================================");
+    log_info("Running with %d OpenMP thread(s)", omp_get_max_threads());
+    log_info("Puzzle file: %s", filename);
 
-    // Print header
-    printf("================================\n");
-    printf("Futoshiki OpenMP Parallel Solver\n");
-    printf("================================\n");
-    printf("Running with %d OpenMP thread(s)\n", omp_get_max_threads());
-    printf("Puzzle file: %s\n\n", filename);
-
-    // Run solver
     if (comparison_mode) {
         run_comparison(filename);
     } else {
-        printf("Mode: %s pre-coloring\n\n", use_precoloring ? "WITH" : "WITHOUT");
+        log_info("Mode: %s pre-coloring\n", use_precoloring ? "WITH" : "WITHOUT");
         SolverStats stats = solve_puzzle(filename, use_precoloring, true);
         print_stats(&stats, "OpenMP Solver");
     }

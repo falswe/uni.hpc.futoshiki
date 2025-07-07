@@ -1,6 +1,6 @@
 #include "comparison.h"
 
-#include <stdio.h>
+#include "logger.h"
 
 void print_stats(const SolverStats* stats, const char* prefix) {
     printf("\n%s Results:\n", prefix);
@@ -35,13 +35,11 @@ void print_comparison(const SolverStats* with_precolor, const SolverStats* witho
     printf("Comparison Analysis: Pre-coloring Impact\n");
     printf("========================================\n");
 
-    // Verify both found solutions
     if (!with_precolor->found_solution || !without_precolor->found_solution) {
-        printf("WARNING: Solution status differs between methods!\n");
+        log_warn("Solution status differs between methods!");
         return;
     }
 
-    // Time comparison
     printf("\nTiming Comparison:\n");
     printf("┌─────────────────┬──────────────┬──────────────┐\n");
     printf("│ Phase           │ Without PC   │ With PC      │\n");
@@ -62,7 +60,6 @@ void print_comparison(const SolverStats* with_precolor, const SolverStats* witho
     printf("  Time saved: %.6f seconds (%.1f%%)\n", time_saved,
            (time_saved / without_precolor->total_time) * 100);
 
-    // Search space analysis
     printf("\nSearch Space Analysis:\n");
     printf("  Initial colors: %d\n", without_precolor->remaining_colors);
     printf("  After pre-coloring: %d\n", with_precolor->remaining_colors);
@@ -71,7 +68,6 @@ void print_comparison(const SolverStats* with_precolor, const SolverStats* witho
            (double)(without_precolor->remaining_colors - with_precolor->remaining_colors) /
                without_precolor->remaining_colors * 100);
 
-    // Summary
     printf("\nSummary:\n");
     if (speedup > 1.0) {
         printf("  ✓ Pre-coloring provided %.1f%% performance improvement\n", (speedup - 1.0) * 100);
@@ -81,22 +77,19 @@ void print_comparison(const SolverStats* with_precolor, const SolverStats* witho
 }
 
 void run_comparison(const char* filename) {
-    printf("\n========================================\n");
-    printf("Running Pre-coloring Comparison Analysis\n");
-    printf("========================================\n");
-    printf("Puzzle: %s\n", filename);
+    log_info("\n========================================");
+    log_info("Running Pre-coloring Comparison Analysis");
+    log_info("========================================");
+    log_info("Puzzle: %s", filename);
 
-    // Run without precoloring
-    printf("\nTest 1: WITHOUT pre-coloring optimization\n");
-    printf("----------------------------------------\n");
+    log_info("\nTest 1: WITHOUT pre-coloring optimization");
+    log_info("----------------------------------------");
     SolverStats without_precolor = solve_puzzle(filename, false, false);
 
-    // Run with precoloring
-    printf("\nTest 2: WITH pre-coloring optimization\n");
-    printf("--------------------------------------\n");
+    log_info("\nTest 2: WITH pre-coloring optimization");
+    log_info("--------------------------------------");
     SolverStats with_precolor = solve_puzzle(filename, true, false);
 
-    // Print results
     print_stats(&without_precolor, "Without Pre-coloring");
     print_stats(&with_precolor, "With Pre-coloring");
     print_comparison(&with_precolor, &without_precolor);
@@ -110,7 +103,7 @@ void compare_implementations(const SolverStats* seq_stats, const SolverStats* pa
     printf("Threads/Processes: %d\n", thread_count);
 
     if (!seq_stats->found_solution || !par_stats->found_solution) {
-        printf("WARNING: Solution status differs!\n");
+        log_warn("Solution status differs!");
         return;
     }
 
@@ -136,7 +129,6 @@ void calculate_parallel_metrics(double sequential_time, double parallel_time, in
     printf("  Efficiency (E): %.1f%%\n", efficiency * 100);
     printf("  Cost (pT): %.6f processor-seconds\n", parallel_time * num_processors);
 
-    // Performance classification
     printf("\nPerformance Classification:\n");
     if (efficiency > 0.9) {
         printf("  ✓ Excellent: Near-linear speedup\n");

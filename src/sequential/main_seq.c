@@ -10,30 +10,34 @@ int main(int argc, char* argv[]) {
         printf("Options:\n");
         printf("  -c : Run comparison mode (with vs without pre-coloring)\n");
         printf("  -n : Disable pre-coloring optimization\n");
-        printf("  -v : Verbose mode (show progress messages)\n");
+        printf("  -q : Quiet mode (only essential results and errors)\n");
+        printf("  -v : Verbose mode (shows progress and details)\n");
+        printf("  -d : Debug mode (shows all messages)\n");
         return 1;
     }
 
-    printf("Futoshiki Sequential Solver\n");
-    printf("===========================\n\n");
-
-    // Parse command-line options
     const char* filename = argv[1];
     bool use_precoloring = true;
-    bool verbose = false;
     bool comparison_mode = false;
+    LogLevel log_level = LOG_INFO;
 
     for (int i = 2; i < argc; i++) {
         if (strcmp(argv[i], "-c") == 0) {
             comparison_mode = true;
         } else if (strcmp(argv[i], "-n") == 0) {
             use_precoloring = false;
+        } else if (strcmp(argv[i], "-q") == 0) {
+            log_level = LOG_ESSENTIAL;
         } else if (strcmp(argv[i], "-v") == 0) {
-            verbose = true;
+            log_level = LOG_VERBOSE;
+        } else if (strcmp(argv[i], "-d") == 0) {
+            log_level = LOG_DEBUG;
         }
     }
 
-    set_progress_display(verbose);
+    logger_init(log_level);
+    log_info("Futoshiki Sequential Solver");
+    log_info("===========================");
 
     if (comparison_mode) {
         run_comparison(filename);

@@ -4,39 +4,9 @@
 #include <stdarg.h>
 #include <sys/time.h>
 
-// Global variable for progress display
-bool g_show_progress = false;
-
 // For MPI compatibility - these will be defined by MPI implementation
 __attribute__((weak)) int g_mpi_rank = 0;
 __attribute__((weak)) int g_mpi_size = 1;
-
-void set_progress_display(bool show) { g_show_progress = show; }
-
-void print_progress(const char* format, ...) {
-    if (!g_show_progress) return;
-
-    // Only master process should print in MPI context
-    if (g_mpi_rank != 0) return;
-
-    va_list args;
-    va_start(args, format);
-    printf("[PROGRESS] ");
-    vprintf(format, args);
-    printf("\n");
-    fflush(stdout);
-    va_end(args);
-}
-
-void print_cell_colors(const Futoshiki* puzzle, int row, int col) {
-    if (!g_show_progress || g_mpi_rank != 0) return;
-
-    printf("[PROGRESS] Cell [%d][%d]: ", row, col);
-    for (int i = 0; i < puzzle->pc_lengths[row][col]; i++) {
-        printf("%d ", puzzle->pc_list[row][col][i]);
-    }
-    printf("\n");
-}
 
 double get_time(void) {
     struct timeval tv;
@@ -244,8 +214,7 @@ void process_uniqueness(Futoshiki* puzzle, int row, int col) {
 }
 
 int compute_pc_lists(Futoshiki* puzzle, bool use_precoloring) {
-    print_progress("Starting pre-coloring");
-    int total_colors_removed = 0;
+    log_verbose("Starting pre-coloring phase.");
     int initial_colors = 0;
 
     // Initialize pc_lists
@@ -253,19 +222,16 @@ int compute_pc_lists(Futoshiki* puzzle, bool use_precoloring) {
         for (int col = 0; col < puzzle->size; col++) {
             puzzle->pc_lengths[row][col] = 0;
 
-            // Consider pre-set colors of the board
             if (puzzle->board[row][col] != EMPTY) {
                 puzzle->pc_list[row][col][0] = puzzle->board[row][col];
                 puzzle->pc_lengths[row][col] = 1;
-                initial_colors += 1;  // Only count 1 since it's preset
-                continue;
+                initial_colors += 1;
+            } else {
+                for (int color = 1; color <= puzzle->size; color++) {
+                    puzzle->pc_list[row][col][puzzle->pc_lengths[row][col]++] = color;
+                }
+                initial_colors += puzzle->size;
             }
-
-            // Initialize with all possible colors
-            for (int color = 1; color <= puzzle->size; color++) {
-                puzzle->pc_list[row][col][puzzle->pc_lengths[row][col]++] = color;
-            }
-            initial_colors += puzzle->size;
         }
     }
 
@@ -276,17 +242,13 @@ int compute_pc_lists(Futoshiki* puzzle, bool use_precoloring) {
             int old_lengths[MAX_N][MAX_N];
             memcpy(old_lengths, puzzle->pc_lengths, sizeof(old_lengths));
 
-            // Process each cell
             for (int row = 0; row < puzzle->size; row++) {
                 for (int col = 0; col < puzzle->size; col++) {
-                    int before_length = puzzle->pc_lengths[row][col];
                     filter_possible_colors(puzzle, row, col);
                     process_uniqueness(puzzle, row, col);
-                    total_colors_removed += before_length - puzzle->pc_lengths[row][col];
                 }
             }
 
-            // Check for changes
             for (int row = 0; row < puzzle->size; row++) {
                 for (int col = 0; col < puzzle->size; col++) {
                     if (puzzle->pc_lengths[row][col] != old_lengths[row][col]) {
@@ -297,8 +259,15 @@ int compute_pc_lists(Futoshiki* puzzle, bool use_precoloring) {
         } while (changes);
     }
 
-    print_progress("Pre-coloring complete");
-    return total_colors_removed;
+    int final_colors = 0;
+    for (int row = 0; row < puzzle->size; row++) {
+        for (int col = 0; col < puzzle->size; col++) {
+            final_colors += puzzle->pc_lengths[row][col];
+        }
+    }
+
+    log_verbose("Pre-coloring phase complete.");
+    return initial_colors - final_colors;
 }
 
 bool find_first_empty_cell(const Futoshiki* puzzle, int solution[MAX_N][MAX_N], int* row,
@@ -312,15 +281,12 @@ bool find_first_empty_cell(const Futoshiki* puzzle, int solution[MAX_N][MAX_N], 
                 *col = c;
                 found_empty = true;
             } else if (solution != NULL) {
-                // Initialize solution with board values as we go
                 solution[r][c] = puzzle->board[r][c];
             }
         }
     }
 
-    // If solution matrix provided, copy remaining board values
     if (solution != NULL && !found_empty) {
-        // Complete the copy if no empty cell was found
         for (int r = 0; r < puzzle->size; r++) {
             for (int c = 0; c < puzzle->size; c++) {
                 solution[r][c] = puzzle->board[r][c];
@@ -332,23 +298,19 @@ bool find_first_empty_cell(const Futoshiki* puzzle, int solution[MAX_N][MAX_N], 
 }
 
 bool color_g_seq(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col) {
-    // Check if we have completed the grid
     if (row >= puzzle->size) {
         return true;
     }
 
-    // Move to the next row when current row is complete
     if (col >= puzzle->size) {
         return color_g_seq(puzzle, solution, row + 1, 0);
     }
 
-    // Skip given cells
     if (puzzle->board[row][col] != EMPTY) {
         solution[row][col] = puzzle->board[row][col];
         return color_g_seq(puzzle, solution, row, col + 1);
     }
 
-    // Try each possible color for current cell
     for (int i = 0; i < puzzle->pc_lengths[row][col]; i++) {
         int color = puzzle->pc_list[row][col][i];
         if (safe(puzzle, row, col, solution, color)) {
@@ -356,7 +318,7 @@ bool color_g_seq(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col
             if (color_g_seq(puzzle, solution, row, col + 1)) {
                 return true;
             }
-            solution[row][col] = EMPTY;  // Backtrack
+            solution[row][col] = EMPTY;
         }
     }
 
@@ -411,7 +373,7 @@ void print_board(const Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
 }
 
 bool parse_futoshiki(const char* input, Futoshiki* puzzle) {
-    print_progress("Parsing puzzle input");
+    log_verbose("Parsing puzzle input from string.");
 
     memset(puzzle, 0, sizeof(Futoshiki));
     int last_num_relative_positions[MAX_N] = {0};
@@ -421,23 +383,17 @@ bool parse_futoshiki(const char* input, Futoshiki* puzzle) {
     int board_row = 0;
 
     while (*cursor != '\0' && board_row < MAX_N) {
-        // 1. Mark the beginning of the current line, including any whitespace.
         const char* line_start = cursor;
-
-        // 2. Find the end of the line's content (before newline characters).
         const char* line_end = line_start;
         while (*line_end != '\0' && *line_end != '\n' && *line_end != '\r') {
             line_end++;
         }
         int line_len = line_end - line_start;
 
-        // 3. Advance the main cursor past this line and its newline characters for the next
-        // iteration.
         cursor = line_end;
         if (*cursor == '\r') cursor++;
         if (*cursor == '\n') cursor++;
 
-        // 4. Check if the line we just identified is entirely blank. If so, skip it.
         bool is_blank = true;
         for (int i = 0; i < line_len; i++) {
             if (!isspace((unsigned char)line_start[i])) {
@@ -461,7 +417,6 @@ bool parse_futoshiki(const char* input, Futoshiki* puzzle) {
         }
 
         if (has_digits) {
-            // --- This is a NUMBER row ---
             if (size == 0) {
                 const char* scan_p = line_start;
                 int temp_size = 0;
@@ -510,7 +465,6 @@ bool parse_futoshiki(const char* input, Futoshiki* puzzle) {
             board_row++;
 
         } else if (has_v_constraints && board_row > 0) {
-            // --- This is a VERTICAL constraint row ---
             for (int i = 0; i < line_len; i++) {
                 char v_con_char = line_start[i];
                 if (v_con_char != 'v' && v_con_char != 'V' && v_con_char != '^') {
@@ -542,36 +496,32 @@ bool parse_futoshiki(const char* input, Futoshiki* puzzle) {
     }
 
     if (size == 0) {
-        printf("Error: Puzzle input appears to be empty or invalid.\n");
+        log_error("Puzzle input appears to be empty or invalid.");
         return false;
     }
-
     return true;
 }
 
 bool read_puzzle_from_file(const char* filename, Futoshiki* puzzle) {
-    print_progress("Reading puzzle file");
+    log_verbose("Reading puzzle file: %s", filename);
 
     FILE* file = fopen(filename, "r");
     if (!file) {
-        printf("Error: Could not open file %s\n", filename);
+        log_error("Could not open file '%s'", filename);
         return false;
     }
-
-    char buffer[1024] = {0};
-    char content[1024] = {0};
-    int total_read = 0;
-
+    char buffer[4096];
+    char content[16384] = {0};
+    size_t total_read = 0;
     while (fgets(buffer, sizeof(buffer), file)) {
-        strcat(content, buffer);
-        total_read += strlen(buffer);
-        if (total_read >= sizeof(content) - 1) {
-            printf("Error: Puzzle file too large\n");
+        if (total_read + strlen(buffer) >= sizeof(content)) {
+            log_error("Puzzle file '%s' is too large (max %zu bytes)", filename, sizeof(content));
             fclose(file);
             return false;
         }
+        strcat(content, buffer);
+        total_read += strlen(buffer);
     }
-
     fclose(file);
     return parse_futoshiki(content, puzzle);
 }

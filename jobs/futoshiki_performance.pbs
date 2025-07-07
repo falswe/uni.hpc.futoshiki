@@ -55,7 +55,6 @@ run_test() {
     
     echo "--- Testing: $impl with $threads thread(s)/process(es) ---"
     
-    # Run without printing the solution to keep logs clean
     case $impl in
         sequential)
             time ./bin/futoshiki_seq $puzzle -n
