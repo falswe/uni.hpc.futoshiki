@@ -3,9 +3,9 @@
 # PBS script for Futoshiki Task Factor performance testing
 #PBS -N futoshiki_factor_test
 #PBS -q short_cpuQ
-#PBS -l walltime=02:00:00
+#PBS -l walltime=06:00:00
 # We request a good number of CPUs on a single node for the test
-#PBS -l select=1:ncpus=32:mem=8gb
+#PBS -l select=16:ncpus=16:mem=8gb
 #PBS -l place=excl
 
 # This script expects PUZZLE_FILE to be passed from the environment
