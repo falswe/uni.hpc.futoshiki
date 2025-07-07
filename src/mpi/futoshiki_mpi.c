@@ -3,6 +3,8 @@
 #include <mpi.h>
 #include <string.h>
 
+#include "../common/multilevel_tasks.h"
+
 // Strong definitions of MPI rank and size
 int g_mpi_rank = 0;
 int g_mpi_size = 1;
@@ -15,245 +17,6 @@ typedef enum {
     TAG_TERMINATE = 4,
     TAG_WORK_ASSIGNMENT = 5
 } MessageTag;
-
-// Structure to represent a partial solution (work unit)
-typedef struct {
-    int depth;
-    int assignments[MAX_N * 3];  // [row1, col1, color1, row2, col2, color2, ...]
-} WorkUnit;
-
-/**
- * Recursively counts the number of valid partial solutions at a specific depth
- */
-static long long count_valid_assignments_recursive(Futoshiki* puzzle, int solution[MAX_N][MAX_N],
-                                                   int empty_cells[MAX_N * MAX_N][2],
-                                                   int num_empty_cells, int current_cell_idx,
-                                                   int target_depth) {
-    // If we have reached the target depth, we have found one valid assignment path
-    if (current_cell_idx >= target_depth) {
-        return 1;
-    }
-
-    // This should not happen if target_depth <= num_empty_cells, but it's a safe guard
-    if (current_cell_idx >= num_empty_cells) {
-        return 1;
-    }
-
-    long long count = 0;
-    int row = empty_cells[current_cell_idx][0];
-    int col = empty_cells[current_cell_idx][1];
-
-    // Iterate through all possible colors for the current empty cell
-    for (int i = 0; i < puzzle->pc_lengths[row][col]; i++) {
-        int color = puzzle->pc_list[row][col][i];
-
-        // Check if placing this color is valid given the current partial solution
-        if (safe(puzzle, row, col, solution, color)) {
-            // If it's safe, apply the color to the solution
-            solution[row][col] = color;
-
-            // Recursively call for the next cell in the sequence
-            count += count_valid_assignments_recursive(
-                puzzle, solution, empty_cells, num_empty_cells, current_cell_idx + 1, target_depth);
-
-            // Backtrack: remove the color to explore other possibilities
-            solution[row][col] = EMPTY;
-        }
-    }
-
-    return count;
-}
-
-/**
- * Calculate the appropriate depth for work distribution
- */
-static int calculate_distribution_depth(Futoshiki* puzzle, int num_workers) {
-    double start_time = get_time();
-
-    if (num_workers <= 0) {
-        return 0;
-    }
-
-    // Set a reasonable max depth to prevent excessive upfront computation
-    int max_depth = 5;
-    if (puzzle->size > 9) max_depth = 4;
-    if (puzzle->size > 15) max_depth = 3;
-
-    // Find the sequence of empty cells to be filled
-    int empty_cells[MAX_N * MAX_N][2];
-    int num_empty = 0;
-    for (int r = 0; r < puzzle->size; r++) {
-        for (int c = 0; c < puzzle->size; c++) {
-            if (puzzle->board[r][c] == EMPTY) {
-                empty_cells[num_empty][0] = r;
-                empty_cells[num_empty][1] = c;
-                num_empty++;
-            }
-        }
-    }
-
-    if (num_empty == 0) {
-        print_progress("Puzzle has no empty cells; no work to distribute.");
-        return 0;
-    }
-
-    print_progress("Job Distribution Strategy:");
-    print_progress("  - Target: >%d jobs for %d workers.", num_workers, num_workers);
-
-    int chosen_depth = 0;
-    long long job_count = 0;
-
-    // A temporary solution grid for the recursive counting
-    int temp_solution[MAX_N][MAX_N];
-    memcpy(temp_solution, puzzle->board, sizeof(temp_solution));
-
-    // Find the smallest depth 'd' where the number of jobs is > num_workers
-    for (int d = 1; d <= num_empty && d <= max_depth; d++) {
-        memcpy(temp_solution, puzzle->board, sizeof(temp_solution));
-        job_count =
-            count_valid_assignments_recursive(puzzle, temp_solution, empty_cells, num_empty, 0, d);
-
-        print_progress("  - Depth %d check: found exactly %lld valid work units.", d, job_count);
-
-        chosen_depth = d;
-
-        if (job_count > num_workers) {
-            print_progress("  - Depth %d is sufficient. Final choice.", chosen_depth);
-            break;
-        }
-
-        if (d == num_empty && job_count <= num_workers) {
-            print_progress("  - Reached max possible depth (%d), using all %lld jobs.", d,
-                           job_count);
-        } else if (d == max_depth && job_count <= num_workers) {
-            print_progress(
-                "  - Reached configured max_depth (%d), using %lld jobs. This may be fewer than "
-                "available workers.",
-                d, job_count);
-        }
-    }
-
-    if (job_count == 0 && num_empty > 0) {
-        print_progress(
-            "WARNING: No valid work units could be generated even at minimal depth. Puzzle might "
-            "be unsolvable.");
-        // We can return 0 here because generate_work_units will also find 0 units and fall back
-    }
-
-    double end_time = get_time();
-    print_progress("Depth calculation took %.6f seconds.", end_time - start_time);
-
-    print_progress("  - Chosen depth: %d (will generate %lld work units)", chosen_depth, job_count);
-    return chosen_depth;
-}
-
-/**
- * Generate all valid partial solutions up to the specified depth
- */
-static void generate_work_units_recursive(Futoshiki* puzzle, int solution[MAX_N][MAX_N],
-                                          WorkUnit** units, int* unit_count, int* capacity,
-                                          int current_depth, int target_depth, int* assignments,
-                                          int row, int col) {
-    // Safety limit - don't generate too many work units
-    if (*unit_count >= 10000) {
-        print_progress("WARNING: Work unit limit reached (%d units)", *unit_count);
-        return;
-    }
-
-    // Find next empty cell
-    while (row < puzzle->size) {
-        if (col >= puzzle->size) {
-            row++;
-            col = 0;
-            continue;
-        }
-        if (puzzle->board[row][col] == EMPTY && solution[row][col] == EMPTY) {
-            break;
-        }
-        col++;
-    }
-
-    // Check if we've reached the target depth or end of board
-    if (current_depth >= target_depth || row >= puzzle->size) {
-        // Create a work unit
-        if (*unit_count >= *capacity) {
-            int new_capacity = *capacity * 2;
-            if (new_capacity > 10000) new_capacity = 10000;  // Hard limit
-            if (new_capacity <= *capacity) return;           // Can't grow anymore
-
-            WorkUnit* new_units = realloc(*units, new_capacity * sizeof(WorkUnit));
-            if (!new_units) {
-                print_progress("WARNING: Failed to expand work unit array");
-                return;
-            }
-            *units = new_units;
-            *capacity = new_capacity;
-        }
-
-        WorkUnit* unit = &(*units)[*unit_count];
-        unit->depth = current_depth;
-        memcpy(unit->assignments, assignments, current_depth * 3 * sizeof(int));
-        (*unit_count)++;
-        return;
-    }
-
-    // Try each possible color for this cell
-    for (int i = 0; i < puzzle->pc_lengths[row][col]; i++) {
-        int color = puzzle->pc_list[row][col][i];
-
-        if (safe(puzzle, row, col, solution, color)) {
-            // Make assignment
-            solution[row][col] = color;
-            assignments[current_depth * 3] = row;
-            assignments[current_depth * 3 + 1] = col;
-            assignments[current_depth * 3 + 2] = color;
-
-            // Recurse
-            generate_work_units_recursive(puzzle, solution, units, unit_count, capacity,
-                                          current_depth + 1, target_depth, assignments, row,
-                                          col + 1);
-
-            // Backtrack
-            solution[row][col] = EMPTY;
-        }
-    }
-}
-
-/**
- * Generate all work units up to the calculated depth
- */
-static WorkUnit* generate_work_units(Futoshiki* puzzle, int depth, int* num_units) {
-    // Limit initial capacity to prevent excessive memory allocation
-    int capacity = (g_mpi_size - 1) * 4;   // Start with 4x workers
-    if (capacity > 1000) capacity = 1000;  // Cap at 1000
-
-    WorkUnit* units = malloc(capacity * sizeof(WorkUnit));
-    if (!units) {
-        print_progress("ERROR: Failed to allocate memory for work units");
-        *num_units = 0;
-        return NULL;
-    }
-
-    *num_units = 0;
-
-    int solution[MAX_N][MAX_N];
-    memcpy(solution, puzzle->board, sizeof(solution));
-
-    int assignments[MAX_N * 3];  // row, col, color for each assignment
-
-    generate_work_units_recursive(puzzle, solution, &units, num_units, &capacity, 0, depth,
-                                  assignments, 0, 0);
-
-    print_progress("Generated %d work units at depth %d", *num_units, depth);
-
-    // Shrink to actual size
-    if (*num_units > 0 && *num_units < capacity) {
-        WorkUnit* shrunk = realloc(units, *num_units * sizeof(WorkUnit));
-        if (shrunk) units = shrunk;
-    }
-
-    return units;
-}
 
 /**
  * Worker process function with multi-level work units
@@ -275,23 +38,12 @@ static void mpi_worker(Futoshiki* puzzle) {
             break;
         }
 
-        // Initialize solution with puzzle board
-        memcpy(solution, puzzle->board, sizeof(solution));
-
-        // Apply the partial solution from work unit
-        for (int i = 0; i < work_unit.depth; i++) {
-            int row = work_unit.assignments[i * 3];
-            int col = work_unit.assignments[i * 3 + 1];
-            int color = work_unit.assignments[i * 3 + 2];
-            solution[row][col] = color;
-        }
+        // Apply the work unit to get partial solution
+        apply_work_unit(puzzle, &work_unit, solution);
 
         // Find where to continue from
-        int start_row = 0, start_col = 0;
-        if (work_unit.depth > 0) {
-            start_row = work_unit.assignments[(work_unit.depth - 1) * 3];
-            start_col = work_unit.assignments[(work_unit.depth - 1) * 3 + 1] + 1;
-        }
+        int start_row, start_col;
+        get_continuation_point(&work_unit, &start_row, &start_col);
 
         // Try to solve from this partial solution
         if (color_g_seq(puzzle, solution, start_row, start_col)) {
@@ -378,28 +130,7 @@ static bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
 
                 print_progress("Assigned work unit %d/%d to worker %d", next_unit + 1, num_units,
                                worker_rank);
-
-                WorkUnit* unit = &work_units[next_unit];
-                const int max_assingments_str_len = 64;
-                char assignments_str[max_assingments_str_len];
-                int offset = 0;
-                assignments_str[0] = '\0';
-
-                for (int i = 0; i < unit->depth; i++) {
-                    int remaining_space = max_assingments_str_len - offset;
-                    int chars_written =
-                        snprintf(assignments_str + offset, remaining_space, " (%d,%d,%d)",
-                                 unit->assignments[i * 3], unit->assignments[i * 3 + 1],
-                                 unit->assignments[i * 3 + 2]);
-                    if (chars_written <= 0 || chars_written >= remaining_space) {
-                        strncat(assignments_str, "...", 3);
-                        break;
-                    }
-                    offset += chars_written;
-                }
-
-                print_progress("Work unit %d: depth=%d, assignments=%s", next_unit + 1, unit->depth,
-                               assignments_str);
+                print_work_unit(&work_units[next_unit], next_unit + 1);
 
                 next_unit++;
             } else {
