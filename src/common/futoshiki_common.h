@@ -61,6 +61,7 @@ void print_board(const Futoshiki* puzzle, int solution[MAX_N][MAX_N]);
 
 // === Utility functions ===
 double get_time(void);
+int get_target_tasks(int num_workers, double factor, const char* impl_name);
 
 // === Global variables ===
 extern int g_mpi_rank;

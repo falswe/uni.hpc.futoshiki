@@ -14,6 +14,30 @@ double get_time(void) {
     return tv.tv_sec + tv.tv_usec * 1e-6;
 }
 
+int get_target_tasks(int num_workers, double factor, const char* impl_name) {
+    if (num_workers <= 0) {
+        // This can happen if g_mpi_size is 1, so num_workers is 0.
+        // Or if omp_get_max_threads() returns 0 or 1.
+        num_workers = 1;
+    }
+
+    int target_tasks = (int)(num_workers * factor);
+
+    // Sanity check: ensure we generate at least one task per worker if the factor is >= 1.0,
+    // or at least one total task if the factor is < 1.0.
+    if (target_tasks < num_workers && factor >= 1.0) {
+        target_tasks = num_workers;
+    }
+    if (target_tasks < 1) {
+        target_tasks = 1;
+    }
+
+    log_info("%s task generation strategy: target = %d workers * %.2f factor = %d tasks", impl_name,
+             num_workers, factor, target_tasks);
+
+    return target_tasks;
+}
+
 bool safe(const Futoshiki* puzzle, int row, int col, int solution[MAX_N][MAX_N], int color) {
     // If cell has a given color, only allow that color
     if (puzzle->board[row][col] != EMPTY) {
