@@ -5,12 +5,20 @@
 
 #include "../common/parallel_work_distribution.h"
 
+static double g_omp_task_factor = 4.0;
+
+void omp_set_task_factor(double factor) {
+    if (factor > 0) {
+        g_omp_task_factor = factor;
+    }
+}
+
 static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     log_verbose("Starting OpenMP parallel backtracking.");
     bool found_solution = false;
 
     int num_threads = omp_get_max_threads();
-    int target_tasks = num_threads * 4;
+    int target_tasks = get_target_tasks(num_threads, g_omp_task_factor, "OpenMP");
     int depth = calculate_distribution_depth(puzzle, target_tasks);
 
     if (depth == 0) {

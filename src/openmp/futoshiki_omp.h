@@ -15,4 +15,10 @@
  */
 SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_solution);
 
+/**
+ * Sets the task generation multiplication factor for OpenMP.
+ * @param factor The multiplier for the number of threads (e.g., 4.0 for 4x tasks).
+ */
+void omp_set_task_factor(double factor);
+
 #endif  // FUTOSHIKI_OMP_H

@@ -21,4 +21,10 @@ void init_mpi(int* argc, char*** argv);
  */
 void finalize_mpi();
 
+/**
+ * Sets the task generation multiplication factor for MPI.
+ * @param factor The multiplier for the number of workers (e.g., 1.0 for 1x tasks).
+ */
+void mpi_set_task_factor(double factor);
+
 #endif  // FUTOSHIKI_MPI_H

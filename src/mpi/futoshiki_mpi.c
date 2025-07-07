@@ -7,6 +7,7 @@
 
 int g_mpi_rank = 0;
 int g_mpi_size = 1;
+static double g_mpi_task_factor = 1.0;
 
 typedef enum {
     TAG_WORK_REQUEST = 1,
@@ -15,6 +16,12 @@ typedef enum {
     TAG_TERMINATE = 4,
     TAG_WORK_ASSIGNMENT = 5
 } MessageTag;
+
+void mpi_set_task_factor(double factor) {
+    if (factor > 0) {
+        g_mpi_task_factor = factor;
+    }
+}
 
 static void mpi_worker(Futoshiki* puzzle) {
     int solution[MAX_N][MAX_N];
@@ -51,7 +58,10 @@ static void mpi_worker(Futoshiki* puzzle) {
 
 static bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     log_verbose("Starting MPI parallel backtracking with %d workers", g_mpi_size - 1);
-    int depth = calculate_distribution_depth(puzzle, g_mpi_size - 1);
+
+    int num_workers = g_mpi_size > 1 ? g_mpi_size - 1 : 1;
+    int target_tasks = get_target_tasks(num_workers, g_mpi_task_factor, "MPI");
+    int depth = calculate_distribution_depth(puzzle, target_tasks);
     int num_units;
     WorkUnit* work_units = generate_work_units(puzzle, depth, &num_units);
 

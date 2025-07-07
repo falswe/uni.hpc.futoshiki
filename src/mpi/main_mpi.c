@@ -15,6 +15,7 @@ int main(int argc, char* argv[]) {
             fprintf(stderr, "  -q : Quiet mode (only essential results and errors)\n");
             fprintf(stderr, "  -v : Verbose mode (shows progress and details)\n");
             fprintf(stderr, "  -d : Debug mode (shows all messages)\n");
+            fprintf(stderr, "  -f <factor>: Set task generation factor (e.g., 1.0, 2.0)\n");
         }
         finalize_mpi();
         return 1;
@@ -23,6 +24,7 @@ int main(int argc, char* argv[]) {
     const char* filename = argv[1];
     bool use_precoloring = true;
     LogLevel log_level = LOG_INFO;
+    double task_factor = 1.0;
 
     for (int i = 2; i < argc; i++) {
         if (strcmp(argv[i], "-n") == 0) {
@@ -33,10 +35,19 @@ int main(int argc, char* argv[]) {
             log_level = LOG_VERBOSE;
         } else if (strcmp(argv[i], "-d") == 0) {
             log_level = LOG_DEBUG;
+        } else if (strcmp(argv[i], "-f") == 0 && i + 1 < argc) {
+            task_factor = atof(argv[++i]);
+            if (task_factor <= 0) {
+                if (g_mpi_rank == 0) fprintf(stderr, "Error: Invalid task factor\n");
+                finalize_mpi();
+                return 1;
+            }
         }
     }
 
     logger_init(log_level);
+
+    mpi_set_task_factor(task_factor);
 
     if (g_mpi_rank == 0) {
         log_info("=============================");

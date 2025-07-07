@@ -25,19 +25,27 @@ int main(int argc, char* argv[]) {
     bool comparison_mode = false;
     LogLevel log_level = LOG_INFO;
     int requested_threads = 0;
+    double task_factor = 4.0;
 
     for (int i = 2; i < argc; i++) {
-        if (strcmp(argv[i], "-c") == 0) comparison_mode = true;
-        else if (strcmp(argv[i], "-n") == 0) use_precoloring = false;
-        else if (strcmp(argv[i], "-q") == 0) log_level = LOG_ESSENTIAL;
-        else if (strcmp(argv[i], "-v") == 0) log_level = LOG_VERBOSE;
-        else if (strcmp(argv[i], "-d") == 0) log_level = LOG_DEBUG;
-        else if (strcmp(argv[i], "-t") == 0 && i + 1 < argc) {
+        if (strcmp(argv[i], "-c") == 0) {
+            comparison_mode = true;
+        } else if (strcmp(argv[i], "-n") == 0) {
+            use_precoloring = false;
+        } else if (strcmp(argv[i], "-q") == 0) {
+            log_level = LOG_ESSENTIAL;
+        } else if (strcmp(argv[i], "-v") == 0) {
+            log_level = LOG_VERBOSE;
+        } else if (strcmp(argv[i], "-d") == 0) {
+            log_level = LOG_DEBUG;
+        } else if (strcmp(argv[i], "-t") == 0 && i + 1 < argc) {
             requested_threads = atoi(argv[++i]);
             if (requested_threads <= 0) {
                 fprintf(stderr, "Error: Invalid thread count\n");
                 return 1;
             }
+        } else if (strcmp(argv[i], "-f") == 0 && i + 1 < argc) {
+            task_factor = atof(argv[++i]);
         }
     }
 
@@ -45,6 +53,8 @@ int main(int argc, char* argv[]) {
         omp_set_num_threads(requested_threads);
     }
     logger_init(log_level);
+
+    omp_set_task_factor(task_factor);
 
     log_info("================================");
     log_info("Futoshiki OpenMP Parallel Solver");
