@@ -6,11 +6,19 @@
 # Max walltime 6h
 #PBS -q short_cpuQ
 # Expected timespan for execution
-#PBS -l walltime=00:30:00
+#PBS -l walltime=06:00:00
 # Chunks (~ Nodes) : Cores per chunk : Shared memory per chunk
+# We request all 64 CPUs on a single node for the full scaling test
 #PBS -l select=1:ncpus=64:mem=8gb
 # Exclusive nodes
 #PBS -l place=excl
+
+# This script expects PUZZLE_FILE to be passed from the environment via `qsub -v`
+if [ -z "$PUZZLE_FILE" ]; then
+    echo "ERROR: PUZZLE_FILE environment variable not set."
+    echo "Please submit this job using the submit_job.sh script."
+    exit 1
+fi
 
 # Change to submission directory
 cd $PBS_O_WORKDIR
@@ -35,6 +43,7 @@ echo "Futoshiki Performance Testing"
 echo "====================================="
 echo "Date: $(date)"
 echo "Node: $(hostname)"
+echo "Puzzle: $PUZZLE_FILE"
 echo "Working directory: $PBS_O_WORKDIR"
 echo ""
 
@@ -43,62 +52,52 @@ run_test() {
     local impl=$1
     local threads=$2
     local puzzle=$3
-    local name=$(basename $puzzle .txt)
     
-    echo "--- $impl with $threads thread(s) on $name ---"
+    echo "--- Testing: $impl with $threads thread(s)/process(es) ---"
     
+    # Run without printing the solution to keep logs clean
     case $impl in
         sequential)
-            time ./bin/futoshiki_seq $puzzle
+            time ./bin/futoshiki_seq $puzzle -n
             ;;
         openmp)
             export OMP_NUM_THREADS=$threads
             export OMP_PROC_BIND=close
             export OMP_PLACES=cores
-            time ./bin/futoshiki_omp $puzzle
+            time ./bin/futoshiki_omp $puzzle -n
             ;;
         mpi)
-            time mpirun.actual -np $threads ./bin/futoshiki_mpi $puzzle
+            time mpirun.actual -np $threads ./bin/futoshiki_mpi $puzzle -n
             ;;
     esac
     
     echo ""
 }
 
-# Test puzzles
-PUZZLES=(
-    "puzzles/9x9_extreme1.txt"
-    "puzzles/9x9_extreme3.txt"
-)
-
-# Run sequential baseline
+# --- Run Sequential Baseline ---
 echo "============================================"
 echo "Sequential Baseline"
 echo "============================================"
-for puzzle in "${PUZZLES[@]}"; do
-    run_test sequential 1 $puzzle
-done
+run_test sequential 1 "$PUZZLE_FILE"
 
-# OpenMP scaling test
+# --- OpenMP Scaling Test ---
 echo "============================================"
 echo "OpenMP Scaling Test"
 echo "============================================"
 for threads in 1 2 4 8 16 32 64; do
-    echo ">>> Testing with $threads threads <<<"
-    for puzzle in "${PUZZLES[@]}"; do
-        run_test openmp $threads $puzzle
-    done
+    # Skip if threads > available cores
+    if [ $threads -gt $PBS_NCPUS ]; then continue; fi
+    run_test openmp $threads $PUZZLE_FILE
 done
 
-# MPI scaling test
+# --- MPI Scaling Test ---
 echo "============================================"
-echo "MPI Scaling Test"
+echo "MPI Scaling Test (on a single node)"
 echo "============================================"
-for procs in 1 2 4 8 16 32 64 128 256; do
-    echo ">>> Testing with $procs processes <<<"
-    for puzzle in "${PUZZLES[@]}"; do
-        run_test mpi $procs $puzzle
-    done
+for procs in 1 2 4 8 16 32 64 128; do
+    # Skip if procs > available cores
+    if [ $procs -gt $PBS_NCPUS ]; then continue; fi
+    run_test mpi $procs $PUZZLE_FILE
 done
 
 echo "Performance testing completed at $(date)"
