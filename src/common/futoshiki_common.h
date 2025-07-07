@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "logger.h"
+
 // Constants
 #define MAX_N 50
 #define EMPTY 0
@@ -39,108 +41,32 @@ typedef struct {
 } SolverStats;
 
 // === Core constraint checking functions ===
-
-/**
- * Check if a color assignment is safe (satisfies all constraints)
- */
 bool safe(const Futoshiki* puzzle, int row, int col, int solution[MAX_N][MAX_N], int color);
-
-/**
- * Check if there exists a valid neighbor for inequality constraints
- */
 bool has_valid_neighbor(const Futoshiki* puzzle, int row, int col, int color, bool need_greater);
-
-/**
- * Check if a color satisfies all inequality constraints
- */
 bool satisfies_inequalities(const Futoshiki* puzzle, int row, int col, int color);
 
 // === Pre-coloring optimization functions ===
-
-/**
- * Filter possible colors for a cell based on constraints
- */
 void filter_possible_colors(Futoshiki* puzzle, int row, int col);
-
-/**
- * Process uniqueness constraints when a cell has only one possible color
- */
 void process_uniqueness(Futoshiki* puzzle, int row, int col);
-
-/**
- * Compute possible color lists for all cells (pre-coloring phase)
- */
 int compute_pc_lists(Futoshiki* puzzle, bool use_precoloring);
 
 // === Solving functions ===
-
-/**
- * Find the first empty cell in the puzzle
- */
 bool find_first_empty_cell(const Futoshiki* puzzle, int solution[MAX_N][MAX_N], int* row, int* col);
-
-/**
- * Sequential backtracking algorithm to solve the Futoshiki puzzle
- */
 bool color_g_seq(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col);
 
 // === I/O functions ===
-
-/**
- * Parse a Futoshiki puzzle from a string
- */
 bool parse_futoshiki(const char* input, Futoshiki* puzzle);
-
-/**
- * Read a puzzle from a file
- */
 bool read_puzzle_from_file(const char* filename, Futoshiki* puzzle);
-
-/**
- * Print the puzzle board with constraints
- */
 void print_board(const Futoshiki* puzzle, int solution[MAX_N][MAX_N]);
 
 // === Utility functions ===
-
-/**
- * Get current time in seconds (for timing)
- */
 double get_time(void);
 
-/**
- * Control progress message display
- */
-void set_progress_display(bool show);
-
-/**
- * Print progress message (only if enabled and on master process)
- */
-void print_progress(const char* format, ...);
-
-/**
- * Print possible colors for a specific cell (for debugging)
- */
-void print_cell_colors(const Futoshiki* puzzle, int row, int col);
-
 // === Global variables ===
-
-// For MPI compatibility - these are weak symbols that can be overridden
 extern int g_mpi_rank;
 extern int g_mpi_size;
 
-// Global progress display flag
-extern bool g_show_progress;
-
 // === Main interface - all implementations must provide this ===
-
-/**
- * Main solving interface
- * @param filename Path to the puzzle file
- * @param use_precoloring Whether to use pre-coloring optimization
- * @param print_solution Whether to print the solution
- * @return SolverStats structure with timing and solution information
- */
 SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_solution);
 
 #endif  // FUTOSHIKI_COMMON_H

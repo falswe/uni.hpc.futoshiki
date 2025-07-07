@@ -5,75 +5,62 @@
 
 #include "../common/parallel_work_distribution.h"
 
-
-// Parallel solving with OpenMP tasks
 static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
-    print_progress("Starting OpenMP parallel backtracking");
-
+    log_verbose("Starting OpenMP parallel backtracking.");
     bool found_solution = false;
 
-    // Calculate optimal depth for task generation
     int num_threads = omp_get_max_threads();
-    int target_tasks = num_threads * 4;  // Generate more tasks than threads for load balancing
+    int target_tasks = num_threads * 4;
     int depth = calculate_distribution_depth(puzzle, target_tasks);
 
     if (depth == 0) {
-        // No empty cells or calculation failed
+        log_info("Falling back to sequential solver (no work units generated).");
         memcpy(solution, puzzle->board, sizeof(int) * MAX_N * MAX_N);
         return color_g_seq(puzzle, solution, 0, 0);
     }
 
-    // Generate work units (partial solutions)
     int num_work_units;
     WorkUnit* work_units = generate_work_units(puzzle, depth, &num_work_units);
 
     if (!work_units || num_work_units == 0) {
-        print_progress("No work units generated - falling back to sequential");
+        log_info("Falling back to sequential solver (no work units generated).");
         if (work_units) free(work_units);
         memcpy(solution, puzzle->board, sizeof(int) * MAX_N * MAX_N);
         return color_g_seq(puzzle, solution, 0, 0);
     }
 
-    print_progress("Generated %d tasks at depth %d", num_work_units, depth);
-
-// Process work units in parallel
 #pragma omp parallel
     {
 #pragma omp single
         {
-            print_progress("Processing %d tasks with %d threads", num_work_units,
-                           omp_get_num_threads());
+            log_verbose("Processing %d tasks with %d threads.", num_work_units,
+                        omp_get_num_threads());
 
             for (int i = 0; i < num_work_units && !found_solution; i++) {
                 WorkUnit* wu = &work_units[i];
 
 #pragma omp task firstprivate(i) shared(found_solution)
                 {
-                    if (!found_solution) {  // Early exit check
-                        // Create local solution
+                    if (!found_solution) {
                         int local_solution[MAX_N][MAX_N];
                         apply_work_unit(puzzle, wu, local_solution);
-
-                        // Find where to continue
                         int start_row, start_col;
                         get_continuation_point(wu, &start_row, &start_col);
 
-                        // Try to complete the solution
                         if (color_g_seq(puzzle, local_solution, start_row, start_col)) {
 #pragma omp critical
                             {
                                 if (!found_solution) {
                                     found_solution = true;
                                     memcpy(solution, local_solution, sizeof(local_solution));
-                                    print_progress("Thread %d found solution from task %d",
-                                                   omp_get_thread_num(), i);
+                                    log_verbose("Thread %d found solution from task %d.",
+                                                omp_get_thread_num(), i);
                                 }
                             }
                         }
                     }
                 }
             }
-
 #pragma omp taskwait
         }
     }
@@ -82,7 +69,6 @@ static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     return found_solution;
 }
 
-// Main solving function
 SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_solution) {
     SolverStats stats = {0};
     Futoshiki puzzle;
@@ -96,28 +82,30 @@ SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_
         print_board(&puzzle, puzzle.board);
     }
 
-    // Time the pre-coloring phase
     double start_precolor = get_time();
     stats.colors_removed = compute_pc_lists(&puzzle, use_precoloring);
     stats.precolor_time = get_time() - start_precolor;
 
-    if (print_solution && g_show_progress) {
-        print_progress("Possible colors for each cell:");
-        for (int row = 0; row < puzzle.size; row++) {
-            for (int col = 0; col < puzzle.size; col++) {
-                print_cell_colors(&puzzle, row, col);
+    log_debug("Possible colors for each cell after pre-coloring:");
+    for (int row = 0; row < puzzle.size; row++) {
+        for (int col = 0; col < puzzle.size; col++) {
+            char buffer[256];
+            int offset = sprintf(buffer, "Cell [%d][%d]:", row, col);
+            for (int i = 0; i < puzzle.pc_lengths[row][col]; i++) {
+                if (offset < sizeof(buffer) - 5) {  // Safety check
+                    offset += sprintf(buffer + offset, " %d", puzzle.pc_list[row][col][i]);
+                }
             }
+            log_debug("%s", buffer);
         }
     }
 
-    // Time the solving phase
     int solution[MAX_N][MAX_N] = {{0}};
     double start_coloring = get_time();
     stats.found_solution = color_g(&puzzle, solution);
     stats.coloring_time = get_time() - start_coloring;
     stats.total_time = stats.precolor_time + stats.coloring_time;
 
-    // Calculate statistics
     stats.remaining_colors = 0;
     for (int row = 0; row < puzzle.size; row++) {
         for (int col = 0; col < puzzle.size; col++) {
