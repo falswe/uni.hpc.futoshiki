@@ -1,5 +1,5 @@
-#ifndef MULTILEVEL_TASKS_H
-#define MULTILEVEL_TASKS_H
+#ifndef PARALLEL_WORK_DISTRIBUTION_H
+#define PARALLEL_WORK_DISTRIBUTION_H
 
 #include "futoshiki_common.h"
 
@@ -107,4 +107,4 @@ void get_continuation_point(const WorkUnit* work_unit, int* start_row, int* star
  */
 void print_work_unit(const WorkUnit* work_unit, int unit_number);
 
-#endif  // MULTILEVEL_TASKS_H
+#endif  // PARALLEL_WORK_DISTRIBUTION_H

@@ -3,7 +3,7 @@
 #include <omp.h>
 #include <string.h>
 
-#include "../common/multilevel_tasks.h"
+#include "../common/parallel_work_distribution.h"
 
 
 // Parallel solving with OpenMP tasks
