@@ -104,8 +104,8 @@ int calculate_distribution_depth(Futoshiki* puzzle, int num_workers) {
 void generate_work_units_recursive(Futoshiki* puzzle, int solution[MAX_N][MAX_N], WorkUnit** units,
                                    int* unit_count, int* capacity, int current_depth,
                                    int target_depth, int* assignments, int row, int col) {
-    if (*unit_count >= 10000) {
-        if (*unit_count == 10000) log_warn("Work unit limit reached (%d units)", *unit_count);
+    if (*unit_count >= 100000) {
+        if (*unit_count == 100000) log_warn("Work unit limit reached (%d units)", *unit_count);
         return;
     }
 
@@ -122,7 +122,7 @@ void generate_work_units_recursive(Futoshiki* puzzle, int solution[MAX_N][MAX_N]
     if (current_depth >= target_depth || row >= puzzle->size) {
         if (*unit_count >= *capacity) {
             int new_capacity = *capacity * 2;
-            if (new_capacity > 10000) new_capacity = 10000;
+            if (new_capacity > 100000) new_capacity = 100000;
             if (new_capacity <= *capacity) return;
 
             WorkUnit* new_units = realloc(*units, new_capacity * sizeof(WorkUnit));

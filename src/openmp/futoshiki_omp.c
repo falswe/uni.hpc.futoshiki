@@ -5,7 +5,7 @@
 
 #include "../common/parallel_work_distribution.h"
 
-static double g_omp_task_factor = 4.0;
+static double g_omp_task_factor = 32.0;
 
 void omp_set_task_factor(double factor) {
     if (factor > 0) {
