@@ -49,10 +49,6 @@ int calculate_distribution_depth(Futoshiki* puzzle, int num_workers) {
         return 0;
     }
 
-    int max_depth = 5;
-    if (puzzle->size > 9) max_depth = 4;
-    if (puzzle->size > 15) max_depth = 3;
-
     int empty_cells[MAX_N * MAX_N][2];
     int num_empty = find_empty_cells(puzzle, empty_cells);
 
@@ -70,7 +66,7 @@ int calculate_distribution_depth(Futoshiki* puzzle, int num_workers) {
     int temp_solution[MAX_N][MAX_N];
     memcpy(temp_solution, puzzle->board, sizeof(temp_solution));
 
-    for (int d = 1; d <= num_empty && d <= max_depth; d++) {
+    for (int d = 1; d <= num_empty; d++) {
         memcpy(temp_solution, puzzle->board, sizeof(temp_solution));
         job_count =
             count_valid_assignments_recursive(puzzle, temp_solution, empty_cells, num_empty, 0, d);
@@ -83,9 +79,6 @@ int calculate_distribution_depth(Futoshiki* puzzle, int num_workers) {
         }
         if (d == num_empty && job_count <= num_workers) {
             log_verbose("  - Reached max possible depth (%d), using all %lld work units.", d,
-                        job_count);
-        } else if (d == max_depth && job_count <= num_workers) {
-            log_verbose("  - Reached configured max_depth (%d), using %lld work units.", d,
                         job_count);
         }
     }
