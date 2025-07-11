@@ -60,8 +60,9 @@ run_test() {
 echo "============================================"
 echo "OpenMP Task Factor Test (Threads = $OMP_THEADS_TO_TEST)"
 echo "============================================"
-echo "Date: $(date)"
+echo "Job ID: $PBS_JOBID"
 echo "Node: $(hostname)"
+echo "Date: $(date)"
 echo "Puzzle: $PUZZLE_FILE"
 echo "Implementation,Threads,Factor,Time(s)"
 for factor in $FACTORS_TO_TEST; do

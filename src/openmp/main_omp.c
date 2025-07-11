@@ -11,7 +11,6 @@ int main(int argc, char* argv[]) {
     if (argc < 2) {
         printf("Usage: %s <puzzle_file> [options]\n", argv[0]);
         printf("Options:\n");
-        printf("  -c       : Run comparison mode (with vs without pre-coloring)\n");
         printf("  -n       : Disable pre-coloring optimization\n");
         printf("  -q       : Quiet mode (only essential results and errors)\n");
         printf("  -v       : Verbose mode (shows progress and details)\n");
@@ -22,15 +21,12 @@ int main(int argc, char* argv[]) {
 
     const char* filename = argv[1];
     bool use_precoloring = true;
-    bool comparison_mode = false;
     LogLevel log_level = LOG_INFO;
     int requested_threads = 0;
     double task_factor = 4.0;
 
     for (int i = 2; i < argc; i++) {
-        if (strcmp(argv[i], "-c") == 0) {
-            comparison_mode = true;
-        } else if (strcmp(argv[i], "-n") == 0) {
+        if (strcmp(argv[i], "-n") == 0) {
             use_precoloring = false;
         } else if (strcmp(argv[i], "-q") == 0) {
             log_level = LOG_ESSENTIAL;
@@ -52,6 +48,7 @@ int main(int argc, char* argv[]) {
     if (requested_threads > 0) {
         omp_set_num_threads(requested_threads);
     }
+
     logger_init(log_level);
 
     omp_set_task_factor(task_factor);
@@ -61,14 +58,11 @@ int main(int argc, char* argv[]) {
     log_info("================================");
     log_info("Running with %d OpenMP thread(s)", omp_get_max_threads());
     log_info("Puzzle file: %s", filename);
+    log_info("Mode: %s pre-coloring\n", use_precoloring ? "WITH" : "WITHOUT");
+    
+    SolverStats stats = solve_puzzle(filename, use_precoloring, true);
 
-    if (comparison_mode) {
-        run_comparison(filename);
-    } else {
-        log_info("Mode: %s pre-coloring\n", use_precoloring ? "WITH" : "WITHOUT");
-        SolverStats stats = solve_puzzle(filename, use_precoloring, true);
-        print_stats(&stats, "OpenMP Solver");
-    }
-
+    print_stats(&stats, "OpenMP Solver");
+    
     return 0;
 }

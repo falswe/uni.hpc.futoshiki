@@ -59,8 +59,9 @@ run_test() {
 echo "============================================"
 echo "MPI Task Factor Test (Processes = $MPI_PROCS_TO_TEST)"
 echo "============================================"
-echo "Date: $(date)"
+echo "Job ID: $PBS_JOBID"
 echo "Node: $(hostname)"
+echo "Date: $(date)"
 echo "Puzzle: $PUZZLE_FILE"
 echo "Implementation,Processes,Factor,Time(s)"
 for factor in $FACTORS_TO_TEST; do

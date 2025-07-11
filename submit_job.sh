@@ -60,7 +60,7 @@ case $JOB_TYPE in
         # MPI needs N nodes, 1 core per node (for this use case)
         # Note: for scaling test on one node, we still need to request all procs
         # The performance script will handle the node allocation for MPI tests
-        RESOURCES="select=1:ncpus=${NPROCS}:mem=8gb"
+        RESOURCES="select=${NPROCS}:ncpus=1:mem=8gb"
         
         echo "Submitting MPI job for $PUZZLE_FILE with $NPROCS processes..."
         echo "Requesting resources: $RESOURCES"
