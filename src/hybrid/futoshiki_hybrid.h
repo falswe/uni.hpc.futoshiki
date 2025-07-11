@@ -1,0 +1,3 @@
+#ifndef FUTOSHIKI_HYBRID_H
+#define FUTOSHIKI_HYBRID_H
+#endif
