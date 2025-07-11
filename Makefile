@@ -13,6 +13,13 @@ BIN_DIR := bin
 OBJ_DIR := obj
 SRC_DIR := src
 
+# === Selecting Clang and libomp for macOS ===
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S), Darwin)
+    CC := /opt/homebrew/opt/llvm/bin/clang 
+    OMPFLAGS := -fopenmp=libomp 
+endif
+
 # === Source Files ===
 COMMON_SRC := $(wildcard $(SRC_DIR)/common/*.c)
 SEQ_SRC    := $(wildcard $(SRC_DIR)/sequential/*.c)
