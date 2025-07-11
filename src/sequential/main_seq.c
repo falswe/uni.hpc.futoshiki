@@ -36,12 +36,17 @@ int main(int argc, char* argv[]) {
     }
 
     logger_init(log_level);
+    
+    log_info("===========================");
     log_info("Futoshiki Sequential Solver");
     log_info("===========================");
+    log_info("Running with 1 process");
+    log_info("Puzzle file: %s", filename);
 
     if (comparison_mode) {
         run_comparison(filename);
     } else {
+        log_info("Mode: %s pre-coloring\n", use_precoloring ? "WITH" : "WITHOUT");
         SolverStats stats = solve_puzzle(filename, use_precoloring, true);
         print_stats(&stats, "Sequential Solver");
     }

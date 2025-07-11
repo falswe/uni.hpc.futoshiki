@@ -52,6 +52,7 @@ int main(int argc, char* argv[]) {
     if (requested_threads > 0) {
         omp_set_num_threads(requested_threads);
     }
+    
     logger_init(log_level);
 
     omp_set_task_factor(task_factor);
