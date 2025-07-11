@@ -41,10 +41,10 @@ echo ""
 echo "====================================="
 echo "Futoshiki Performance Testing"
 echo "====================================="
-echo "Date: $(date)"
+echo "Job ID: $PBS_JOBID"
 echo "Node: $(hostname)"
+echo "Date: $(date)"
 echo "Puzzle: $PUZZLE_FILE"
-echo "Working directory: $PBS_O_WORKDIR"
 echo ""
 
 # Function to run a test
