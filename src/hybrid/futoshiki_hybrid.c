@@ -132,9 +132,6 @@ static bool solve_work_unit_with_omp(Futoshiki* puzzle, WorkUnit* work_unit,
     apply_work_unit(&worker_puzzle, work_unit, temp_board);
     memcpy(worker_puzzle.board, temp_board, sizeof(int) * MAX_N * MAX_N);
 
-    // Re-calculate possibilities based on the new board state.
-    compute_pc_lists(&worker_puzzle, true);
-
     // Determine the depth for generating OpenMP tasks.
     int num_threads = omp_get_max_threads();
     int target_tasks = get_target_tasks(num_threads, g_omp_task_factor, "OMP_Worker");
@@ -350,7 +347,12 @@ SolverStats solve_puzzle(const char* filename, bool use_precoloring,
     if (g_mpi_rank == 0) {
         stats.found_solution = found;
         stats.total_time = stats.precolor_time + stats.coloring_time;
-        // Other stats calculation...
+        stats.remaining_colors = 0;
+        for (int row = 0; row < puzzle.size; row++) {
+            for (int col = 0; col < puzzle.size; col++) {
+                stats.remaining_colors += puzzle.pc_lengths[row][col];
+            }
+        }
         if (print_solution) {
             if (stats.found_solution) {
                 printf("\nSolution:\n");
