@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # PBS script for Futoshiki OpenMP performance testing
-#PBS -N futoshiki_omp
+#PBS -N futoshiki_scaling_omp
 #PBS -q short_cpuQ
 #PBS -l walltime=06:00:00
 #PBS -l select=1:ncpus=64:mem=8gb
@@ -10,7 +10,7 @@
 # This script expects PUZZLE_FILE to be passed from the environment via `qsub -v`
 if [ -z "$PUZZLE_FILE" ]; then
     echo "ERROR: PUZZLE_FILE environment variable not set."
-    echo "Please use 'qsub -v PUZZLE_FILE=path/to/puzzle.txt futoshiki_omp.pbs'"
+    echo "Please use 'qsub -v PUZZLE_FILE=path/to/puzzle.txt futoshiki_scaling_omp.pbs'"
     exit 1
 fi
 
