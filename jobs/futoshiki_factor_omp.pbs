@@ -21,6 +21,8 @@ cd $PBS_O_WORKDIR
 # Load modules
 module load openmpi-4.0.4
 
+# Build the OpenMP version
+echo "Building OpenMP version..."
 make clean
 make openmp
 if [ $? -ne 0 ]; then
@@ -30,44 +32,32 @@ fi
 
 # --- Experiment Parameters ---
 # Use a fixed number of cores to isolate the 'factor' variable
-OMP_THEADS_TO_TEST=64
+OMP_THREADS_TO_TEST=64
 
 # The list of factors to sweep through
-FACTORS_TO_TEST="16.0 32.0 64.0"
-
-
-# Function to run a single test and parse the time
-run_test() {
-    local nprocs=$1
-    local factor=$2
-    local puzzle=$3
-    
-    echo "--- Testing: omp with N=$nprocs, Factor=$factor ---"
-    
-    # Use the `time` command with a format string to get just the real time
-    # The output is sent to stderr, so we redirect it
-    local TIMEFORMAT='%R'
-    local elapsed_time
-    
-    export OMP_NUM_THREADS=$nprocs
-    elapsed_time=$( { time ./bin/futoshiki_omp "$puzzle" -n -q -f "$factor"; } 2>&1 )
-    
-    # Print results in a CSV-friendly format
-    echo "omp,$nprocs,$factor,$elapsed_time"
-}
+FACTORS_TO_TEST="1.0 2.0 4.0 8.0 16.0 32.0 64.0"
 
 # --- OpenMP Factor Scaling Test ---
+echo ""
 echo "============================================"
-echo "OpenMP Task Factor Test (Threads = $OMP_THEADS_TO_TEST)"
+echo "OpenMP Task Factor Test (Threads = $OMP_THREADS_TO_TEST)"
 echo "============================================"
 echo "Job ID: $PBS_JOBID"
 echo "Node: $(hostname)"
 echo "Date: $(date)"
 echo "Puzzle: $PUZZLE_FILE"
-echo "Implementation,Threads,Factor,Time(s)"
-for factor in $FACTORS_TO_TEST; do
-    run_test $OMP_THEADS_TO_TEST "$factor" "$PUZZLE_FILE"
-done
 echo ""
+
+# Set OpenMP environment variables
+export OMP_NUM_THREADS=$OMP_THREADS_TO_TEST
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
+
+for factor in $FACTORS_TO_TEST; do
+    echo "--- Testing: omp with ${OMP_THREADS_TO_TEST} threads, Factor=$factor ---"
+    # The -n and -f flags are passed to the solver
+    time ./bin/futoshiki_omp "$PUZZLE_FILE" -n -f "$factor"
+    echo ""
+done
 
 echo "OpenMP factor testing completed at $(date)"
