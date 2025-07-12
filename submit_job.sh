@@ -26,6 +26,7 @@ usage() {
     exit 1
 }
 
+# Check for at least job_type and puzzle_file
 if [ $# -lt 2 ]; then
     usage
 fi
@@ -35,15 +36,6 @@ PUZZLE_FILE=$2
 NPROCS=$3
 
 case $JOB_TYPE in
-    perf)
-        if [ -z "$PUZZLE_FILE" ]; then
-            echo "Error: Puzzle file required for performance test job"
-            usage
-        fi
-        echo "Submitting performance test job for $PUZZLE_FILE..."
-        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_performance.pbs
-        ;;
-    
     omp)
         if [ -z "$PUZZLE_FILE" ] || [ -z "$NPROCS" ]; then
             echo "Error: Puzzle file and thread count required for OpenMP job"
@@ -65,9 +57,7 @@ case $JOB_TYPE in
             usage
         fi
         
-        # MPI needs N nodes, 1 core per node (for this use case)
-        # Note: for scaling test on one node, we still need to request all procs
-        # The performance script will handle the node allocation for MPI tests
+        # MPI needs N nodes, 1 core per node for this use case
         RESOURCES="select=${NPROCS}:ncpus=1:mem=8gb"
         
         echo "Submitting MPI job for $PUZZLE_FILE with $NPROCS processes..."
