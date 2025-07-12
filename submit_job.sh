@@ -140,6 +140,51 @@ case $JOB_TYPE in
         echo "Submitting Hybrid factor test job for $PUZZLE_FILE..."
         qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_factor_hybrid.pbs
         ;;
+
+    seq)
+        if [ -z "$PUZZLE_FILE" ]; then
+            echo "Error: Puzzle file required for sequential job"
+            usage
+        fi
+        echo "Submitting sequential job for $PUZZLE_FILE..."
+        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_seq.pbs
+        ;;
+
+    scaling_omp)
+        if [ -z "$PUZZLE_FILE" ]; then
+            echo "Error: Puzzle file required for OpenMP scaling test job"
+            usage
+        fi
+        echo "Submitting OpenMP scaling test job for $PUZZLE_FILE..."
+        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_scaling_omp.pbs
+        ;;
+
+    scaling_mpi)
+        if [ -z "$PUZZLE_FILE" ]; then
+            echo "Error: Puzzle file required for MPI scaling test job"
+            usage
+        fi
+        echo "Submitting MPI scaling test job for $PUZZLE_FILE..."
+        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_scaling_mpi.pbs
+        ;;
+
+    factor_omp)
+        if [ -z "$PUZZLE_FILE" ]; then
+            echo "Error: Puzzle file required for OpenMP factor test job"
+            usage
+        fi
+        echo "Submitting OpenMP factor test job for $PUZZLE_FILE..."
+        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_factor_omp2.pbs
+        ;;
+
+    factor_mpi)
+        if [ -z "$PUZZLE_FILE" ]; then
+            echo "Error: Puzzle file required for MPI factor test job"
+            usage
+        fi
+        echo "Submitting MPI factor test job for $PUZZLE_FILE..."
+        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_factor_mpi2.pbs
+        ;;
     
     *)
         echo "Error: Unknown job type '$JOB_TYPE'"
