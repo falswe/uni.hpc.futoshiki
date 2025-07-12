@@ -4,17 +4,19 @@
 #
 
 usage() {
-    echo "Usage: $0 <job_type> <puzzle_file> <num_procs_or_threads>"
+    echo "Usage: $0 <job_type> <puzzle_file> <num_procs_or_threads> [num_omp_threads]"
     echo ""
     echo "Job types:"
     echo "  perf    - Run performance scaling tests for a specific puzzle"
     echo "  omp     - Run OpenMP solver on a puzzle with a specific thread count"
     echo "  mpi     - Run MPI solver on a puzzle with a specific process count"
+    echo "  hybrid  - Run Hybrid MPI+OpenMP solver with given MPI processes and OpenMP threads"
     echo ""
     echo "Examples:"
     echo "  $0 perf puzzles/9x9_hard_1.txt"
     echo "  $0 omp puzzles/9x9_hard_1.txt 8     # Run OpenMP with 8 threads"
     echo "  $0 mpi puzzles/11x11_hard_1.txt 16  # Run MPI with 16 processes"
+    echo "  $0 hybrid puzzles/11x11_hard_1.txt 4 8 # Run Hybrid with 4 MPI processes and 8 OpenMP threads per process"
     exit 1
 }
 
@@ -66,6 +68,23 @@ case $JOB_TYPE in
         echo "Requesting resources: $RESOURCES"
         
         qsub -l "$RESOURCES" -v PUZZLE_FILE="$PUZZLE_FILE",NPROCS="$NPROCS" jobs/futoshiki_mpi.pbs
+        ;;
+
+    hybrid)
+        if [ $# -ne 4 ]; then
+            echo "Error: Puzzle file, MPI process count, and OpenMP thread count required for Hybrid job"
+            usage
+        fi
+        MPI_PROCS=$3
+        OMP_THREADS=$4
+
+        # Hybrid needs MPI_PROCS nodes, with OMP_THREADS cores each
+        RESOURCES="select=${MPI_PROCS}:ncpus=${OMP_THREADS}:mem=8gb"
+
+        echo "Submitting Hybrid job for $PUZZLE_FILE with $MPI_PROCS MPI processes and $OMP_THREADS OpenMP threads..."
+        echo "Requesting resources: $RESOURCES"
+
+        qsub -l "$RESOURCES" -v PUZZLE_FILE="$PUZZLE_FILE",MPI_PROCS="$MPI_PROCS",OMP_THREADS="$OMP_THREADS" jobs/futoshiki_hybrid.pbs
         ;;
     
     *)
