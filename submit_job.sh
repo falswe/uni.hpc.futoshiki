@@ -109,6 +109,22 @@ case $JOB_TYPE in
         echo "Submitting Hybrid factor test job for $PUZZLE_FILE..."
         qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_factor_hybrid.pbs
         ;;
+    hybrid)
+        if [ $# -ne 4 ]; then
+            echo "Error: Puzzle file, MPI process count, and OpenMP thread count required for Hybrid job"
+            usage
+        fi
+        MPI_PROCS=$3
+        OMP_THREADS=$4
+
+        # Hybrid needs MPI_PROCS nodes, with OMP_THREADS cores each
+        RESOURCES="select=${MPI_PROCS}:ncpus=${OMP_THREADS}:mem=8gb"
+
+        echo "Submitting Hybrid job for $PUZZLE_FILE with $MPI_PROCS MPI processes and $OMP_THREADS OpenMP threads..."
+        echo "Requesting resources: $RESOURCES"
+
+        qsub -l "$RESOURCES" -v PUZZLE_FILE="$PUZZLE_FILE",MPI_PROCS="$MPI_PROCS",OMP_THREADS="$OMP_THREADS" jobs/futoshiki_hybrid.pbs
+        ;;
     
     *)
         echo "Error: Unknown job type '$JOB_TYPE'"
