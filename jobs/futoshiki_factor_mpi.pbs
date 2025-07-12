@@ -5,7 +5,7 @@
 #PBS -q short_cpuQ
 #PBS -l walltime=06:00:00
 # We request a good number of CPUs on a single node for the test
-#PBS -l select=256:ncpus=1:mem=2gb
+#PBS -l select=128:ncpus=1:mem=2gb
 #PBS -l place=excl
 
 # This script expects PUZZLE_FILE to be passed from the environment
@@ -21,6 +21,8 @@ cd $PBS_O_WORKDIR
 # Load modules
 module load mpich-3.2
 
+# Build the MPI version
+echo "Building MPI version..."
 make clean
 make mpi
 if [ $? -ne 0 ]; then
@@ -30,32 +32,13 @@ fi
 
 # --- Experiment Parameters ---
 # Use a fixed number of cores to isolate the 'factor' variable
-MPI_PROCS_TO_TEST=256
+MPI_PROCS_TO_TEST=128
 
 # The list of factors to sweep through
-FACTORS_TO_TEST="16.0 32.0 64.0"
-
-
-# Function to run a single test and parse the time
-run_test() {
-    local nprocs=$1
-    local factor=$2
-    local puzzle=$3
-    
-    echo "--- Testing: mpi with N=$nprocs, Factor=$factor ---"
-    
-    # Use the `time` command with a format string to get just the real time
-    # The output is sent to stderr, so we redirect it
-    local TIMEFORMAT='%R'
-    local elapsed_time
-    
-    elapsed_time=$( { time mpirun.actual -np "$nprocs" ./bin/futoshiki_mpi "$puzzle" -n -q -f "$factor"; } 2>&1 )
-    
-    # Print results in a CSV-friendly format
-    echo "mpi,$nprocs,$factor,$elapsed_time"
-}
+FACTORS_TO_TEST="1.0 2.0 4.0 8.0 16.0 32.0 64.0"
 
 # --- MPI Factor Scaling Test ---
+echo ""
 echo "============================================"
 echo "MPI Task Factor Test (Processes = $MPI_PROCS_TO_TEST)"
 echo "============================================"
@@ -63,10 +46,13 @@ echo "Job ID: $PBS_JOBID"
 echo "Node: $(hostname)"
 echo "Date: $(date)"
 echo "Puzzle: $PUZZLE_FILE"
-echo "Implementation,Processes,Factor,Time(s)"
-for factor in $FACTORS_TO_TEST; do
-    run_test $MPI_PROCS_TO_TEST "$factor" "$PUZZLE_FILE"
-done
 echo ""
 
-echo "MPI factor testing completed at $(date)"
+for factor in $FACTORS_TO_TEST; do
+    echo "--- Testing: mpi with ${MPI_PROCS_TO_TEST} processes, Factor=$factor ---"
+    # The -n and -f flags are passed to the solver
+    time mpirun.actual -np "$MPI_PROCS_TO_TEST" ./bin/futoshiki_mpi "$PUZZLE_FILE" -n -f "$factor"
+    echo ""
+done
+
+echo "MPI factor testing completed at $(date)"```
