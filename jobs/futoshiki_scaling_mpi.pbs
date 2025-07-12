@@ -4,7 +4,7 @@
 #PBS -N futoshiki_scaling_mpi
 #PBS -q short_cpuQ
 #PBS -l walltime=06:00:00
-#PBS -l select=1:ncpus=64:mem=8gb
+#PBS -l select=128:ncpus=1:mem=8gb
 #PBS -l place=excl
 
 # This script expects PUZZLE_FILE to be passed from the environment via `qsub -v`
