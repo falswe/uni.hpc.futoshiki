@@ -1,0 +1,48 @@
+#!/bin/bash
+
+# PBS script for Futoshiki sequential execution
+#PBS -N futoshiki_seq
+#PBS -q short_cpuQ
+#PBS -l walltime=06:00:00
+#PBS -l select=1:ncpus=1:mem=8gb
+#PBS -l place=excl
+
+# This script expects PUZZLE_FILE to be passed from the environment via `qsub -v`
+if [ -z "$PUZZLE_FILE" ]; then
+    echo "ERROR: PUZZLE_FILE environment variable not set."
+    echo "Please use 'qsub -v PUZZLE_FILE=path/to/puzzle.txt futoshiki_seq.pbs'"
+    exit 1
+fi
+
+# Change to submission directory
+cd $PBS_O_WORKDIR
+
+# Load modules (may be necessary for build environment)
+module load openmpi-4.0.4
+module load mpich-3.2
+
+# Build the sequential version
+echo "Building sequential version..."
+make sequential
+
+if [ ! -f bin/futoshiki_seq ]; then
+    echo "Build failed!"
+    exit 1
+fi
+
+echo ""
+echo "====================================="
+echo "Futoshiki Sequential Execution"
+echo "====================================="
+echo "Job ID: $PBS_JOBID"
+echo "Node: $(hostname)"
+echo "Date: $(date)"
+echo "Puzzle: $PUZZLE_FILE"
+echo ""
+
+# --- Run Sequential Program ---
+echo "--- Testing: sequential ---"
+time ./bin/futoshiki_seq "$PUZZLE_FILE"
+echo ""
+
+echo "Sequential job completed at $(date)"
