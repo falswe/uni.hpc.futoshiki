@@ -125,6 +125,33 @@ case $JOB_TYPE in
 
         qsub -l "$RESOURCES" -v PUZZLE_FILE="$PUZZLE_FILE",MPI_PROCS="$MPI_PROCS",OMP_THREADS="$OMP_THREADS" jobs/futoshiki_hybrid.pbs
         ;;
+
+    factor_omp)
+        if [ -z "$PUZZLE_FILE" ]; then
+            echo "Error: Puzzle file required for OpenMP factor test job"
+            usage
+        fi
+        echo "Submitting OpenMP factor test job for $PUZZLE_FILE..."
+        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_factor_omp.pbs
+        ;;
+
+    factor_mpi)
+        if [ -z "$PUZZLE_FILE" ]; then
+            echo "Error: Puzzle file required for MPI factor test job"
+            usage
+        fi
+        echo "Submitting MPI factor test job for $PUZZLE_FILE..."
+        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_factor_mpi.pbs
+        ;;
+
+    factor_hybrid)
+        if [ -z "$PUZZLE_FILE" ]; then
+            echo "Error: Puzzle file required for Hybrid factor test job"
+            usage
+        fi
+        echo "Submitting Hybrid factor test job for $PUZZLE_FILE..."
+        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_factor_hybrid.pbs
+        ;;
     
     *)
         echo "Error: Unknown job type '$JOB_TYPE'"
