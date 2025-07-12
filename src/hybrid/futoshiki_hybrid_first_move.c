@@ -9,6 +9,7 @@
 
 #include "../common/parallel_work_distribution.h"
 
+
 // Global MPI variables
 int g_mpi_rank = 0;
 int g_mpi_size = 1;
@@ -126,77 +127,73 @@ static bool solve_work_unit_with_omp(Futoshiki* puzzle, WorkUnit* work_unit,
                                      int solution[MAX_N][MAX_N]) {
     bool found_solution_local = false;
 
-    // Create a local puzzle state based on the work unit from the MPI master.
-    Futoshiki worker_puzzle = *puzzle;
-    int temp_board[MAX_N][MAX_N];
-    apply_work_unit(&worker_puzzle, work_unit, temp_board);
-    memcpy(worker_puzzle.board, temp_board, sizeof(int) * MAX_N * MAX_N);
+    // Apply the master's work unit to get the starting board state.
+    int initial_board[MAX_N][MAX_N];
+    apply_work_unit(puzzle, work_unit, initial_board);
 
-    // Re-calculate possibilities based on the new board state.
-    compute_pc_lists(&worker_puzzle, true);
-
-    // Determine the depth for generating OpenMP tasks.
-    int num_threads = omp_get_max_threads();
-    int target_tasks = get_target_tasks(num_threads, g_omp_task_factor, "OMP_Worker");
-    int depth = calculate_distribution_depth(&worker_puzzle, target_tasks);
-
-    int num_omp_units;
-    WorkUnit* omp_work_units = generate_work_units(&worker_puzzle, depth, &num_omp_units);
-
-    if (!omp_work_units || num_omp_units == 0) {
-        // The sub-problem is too small to be broken down further. Solve it sequentially.
-        if (omp_work_units) free(omp_work_units);
-        int start_row, start_col;
-        get_continuation_point(work_unit, &start_row, &start_col);
-        memcpy(solution, worker_puzzle.board, sizeof(int) * MAX_N * MAX_N);
-        return color_g_seq(&worker_puzzle, solution, start_row, start_col);
+    // Find the first empty cell to start parallel work from.
+    int start_row = 0, start_col = 0;
+    bool found_empty = false;
+    for (int r = 0; r < puzzle->size; r++) {
+        for (int c = 0; c < puzzle->size; c++) {
+            if (initial_board[r][c] == EMPTY) {
+                start_row = r;
+                start_col = c;
+                found_empty = true;
+                break;
+            }
+        }
+        if (found_empty) break;
     }
 
-#pragma omp parallel shared(found_solution_local, solution, omp_work_units, worker_puzzle, num_omp_units)
+    // If there are no empty cells, the work unit itself is a solution.
+    if (!found_empty) {
+        memcpy(solution, initial_board, sizeof(int) * MAX_N * MAX_N);
+        return true;
+    }
+
+#pragma omp parallel shared(found_solution_local, solution)
     {
+        // Let one thread generate tasks for the first empty cell.
 #pragma omp single
         {
-            log_verbose(
-                "Worker %d, Thread 0: Spawning %d OpenMP tasks for %d threads from MPI Work Unit.",
-                g_mpi_rank, num_omp_units, omp_get_num_threads());
+            log_verbose("Worker %d, Thread 0: Spawning tasks for cell (%d, %d) from MPI Work Unit.",
+                        g_mpi_rank, start_row, start_col);
 
-            for (int i = 0; i < num_omp_units; i++) {
-                // If a solution has been found by another task, stop creating new ones.
+            for (int i = 0; i < puzzle->pc_lengths[start_row][start_col]; i++) {
                 if (found_solution_local) continue;
 
-#pragma omp task firstprivate(i)
-                {
-                    // Do not start work if a solution is already found.
-                    if (!found_solution_local) {
-                        int thread_local_solution[MAX_N][MAX_N];
-                        WorkUnit* wu = &omp_work_units[i];
+                int color = puzzle->pc_list[start_row][start_col][i];
 
-                        apply_work_unit(&worker_puzzle, wu, thread_local_solution);
-                        int start_row, start_col;
-                        get_continuation_point(wu, &start_row, &start_col);
+                // Check if this color is a valid move in the current board state.
+                if (safe(puzzle, start_row, start_col, initial_board, color)) {
+#pragma omp task
+                    {
+                        if (!found_solution_local) {
+                            int thread_local_solution[MAX_N][MAX_N];
+                            memcpy(thread_local_solution, initial_board, sizeof(initial_board));
+                            thread_local_solution[start_row][start_col] = color;
 
-                        if (color_g_seq(&worker_puzzle, thread_local_solution, start_row,
-                                        start_col)) {
+                            // Continue solving sequentially from the *next* cell.
+                            if (color_g_seq(puzzle, thread_local_solution, start_row, start_col + 1)) {
 #pragma omp critical
-                            {
-                                // Double-check in a critical section to ensure only one thread
-                                // writes the final solution.
-                                if (!found_solution_local) {
-                                    found_solution_local = true;
-                                    memcpy(solution, thread_local_solution,
-                                           sizeof(thread_local_solution));
-                                    log_verbose("Worker %d, Thread %d: Found a solution.",
-                                                g_mpi_rank, omp_get_thread_num());
+                                {
+                                    if (!found_solution_local) {
+                                        found_solution_local = true;
+                                        memcpy(solution, thread_local_solution,
+                                               sizeof(thread_local_solution));
+                                        log_verbose("Worker %d, Thread %d: Found a solution.",
+                                                    g_mpi_rank, omp_get_thread_num());
+                                    }
                                 }
                             }
                         }
-                    } // if !found
-                }     // omp task
-            }         // for
-        }             // omp single
-    }                 // omp parallel
+                    } // omp task
+                }
+            } // for colors
+        }     // omp single
+    }         // omp parallel
 
-    free(omp_work_units);
     return found_solution_local;
 }
 
@@ -350,7 +347,12 @@ SolverStats solve_puzzle(const char* filename, bool use_precoloring,
     if (g_mpi_rank == 0) {
         stats.found_solution = found;
         stats.total_time = stats.precolor_time + stats.coloring_time;
-        // Other stats calculation...
+        stats.remaining_colors = 0;
+        for (int row = 0; row < puzzle.size; row++) {
+            for (int col = 0; col < puzzle.size; col++) {
+                stats.remaining_colors += puzzle.pc_lengths[row][col];
+            }
+        }
         if (print_solution) {
             if (stats.found_solution) {
                 printf("\nSolution:\n");

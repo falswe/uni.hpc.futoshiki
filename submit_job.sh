@@ -4,19 +4,25 @@
 #
 
 usage() {
-    echo "Usage: $0 <job_type> <puzzle_file> <num_procs_or_threads> [num_omp_threads]"
+    echo "Usage: $0 <job_type> <puzzle_file> [num_procs_or_threads] [num_omp_threads]"
     echo ""
     echo "Job types:"
-    echo "  perf    - Run performance scaling tests for a specific puzzle"
-    echo "  omp     - Run OpenMP solver on a puzzle with a specific thread count"
-    echo "  mpi     - Run MPI solver on a puzzle with a specific process count"
-    echo "  hybrid  - Run Hybrid MPI+OpenMP solver with given MPI processes and OpenMP threads"
+    echo "  perf          - Run performance scaling tests for a specific puzzle"
+    echo "  omp           - Run OpenMP solver on a puzzle with a specific thread count"
+    echo "  mpi           - Run MPI solver on a puzzle with a specific process count"
+    echo "  hybrid        - Run Hybrid MPI+OpenMP solver with given MPI processes and OpenMP threads"
+    echo "  factor_omp    - Run OpenMP factor test for a puzzle"
+    echo "  factor_mpi    - Run MPI factor test for a puzzle"
+    echo "  factor_hybrid - Run Hybrid factor test for a puzzle"
     echo ""
     echo "Examples:"
     echo "  $0 perf puzzles/9x9_hard_1.txt"
-    echo "  $0 omp puzzles/9x9_hard_1.txt 8     # Run OpenMP with 8 threads"
-    echo "  $0 mpi puzzles/11x11_hard_1.txt 16  # Run MPI with 16 processes"
-    echo "  $0 hybrid puzzles/11x11_hard_1.txt 4 8 # Run Hybrid with 4 MPI processes and 8 OpenMP threads per process"
+    echo "  $0 omp puzzles/9x9_hard_1.txt 8"
+    echo "  $0 mpi puzzles/11x11_hard_1.txt 16"
+    echo "  $0 hybrid puzzles/11x11_hard_1.txt 4 8"
+    echo "  $0 factor_omp puzzles/9x9_hard_1.txt"
+    echo "  $0 factor_mpi puzzles/9x9_hard_1.txt"
+    echo "  $0 factor_hybrid puzzles/9x9_hard_1.txt"
     exit 1
 }
 
@@ -85,6 +91,33 @@ case $JOB_TYPE in
         echo "Requesting resources: $RESOURCES"
 
         qsub -l "$RESOURCES" -v PUZZLE_FILE="$PUZZLE_FILE",MPI_PROCS="$MPI_PROCS",OMP_THREADS="$OMP_THREADS" jobs/futoshiki_hybrid.pbs
+        ;;
+
+    factor_omp)
+        if [ -z "$PUZZLE_FILE" ]; then
+            echo "Error: Puzzle file required for OpenMP factor test job"
+            usage
+        fi
+        echo "Submitting OpenMP factor test job for $PUZZLE_FILE..."
+        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_factor_omp.pbs
+        ;;
+
+    factor_mpi)
+        if [ -z "$PUZZLE_FILE" ]; then
+            echo "Error: Puzzle file required for MPI factor test job"
+            usage
+        fi
+        echo "Submitting MPI factor test job for $PUZZLE_FILE..."
+        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_factor_mpi.pbs
+        ;;
+
+    factor_hybrid)
+        if [ -z "$PUZZLE_FILE" ]; then
+            echo "Error: Puzzle file required for Hybrid factor test job"
+            usage
+        fi
+        echo "Submitting Hybrid factor test job for $PUZZLE_FILE..."
+        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_factor_hybrid.pbs
         ;;
     
     *)
