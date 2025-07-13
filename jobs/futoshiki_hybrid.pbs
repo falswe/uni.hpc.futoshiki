@@ -12,8 +12,8 @@
 
 # NOTE: The 'select' line is provided by the submit_job.sh script.
 # This script expects PUZZLE_FILE, MPI_PROCS, and OMP_THREADS from the environment.
-# Example for 2 nodes, 16 threads each:
-# #PBS -l select=2:ncpus=16:mem=8gb
+# Example for 128 nodes, 64 threads each:
+# #PBS -l select=128:ncpus=64:mem=8gb
 
 # Set default process/thread counts for manual runs
 MPI_PROCS=${MPI_PROCS:-2}
@@ -43,6 +43,8 @@ echo "Job ID: $PBS_JOBID"
 echo "Node: $(hostname)"
 echo "Date: $(date)"
 echo "Puzzle: $PUZZLE_FILE"
+echo "Total CPUs (PBS_NCPUS): $PBS_NCPUS"
+echo "Number of Nodes (PBS_NUM_NODES): $PBS_NUM_NODES"
 echo "MPI Processes: $MPI_PROCS"
 echo "OMP Threads per process: $OMP_THREADS"
 echo "Total Cores: $(($MPI_PROCS * $OMP_THREADS))"
