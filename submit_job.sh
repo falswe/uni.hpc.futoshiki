@@ -174,7 +174,7 @@ case $JOB_TYPE in
             usage
         fi
         echo "Submitting OpenMP factor test job for $PUZZLE_FILE..."
-        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_factor_omp2.pbs
+        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_factor_omp.pbs
         ;;
 
     factor_mpi)
@@ -183,7 +183,7 @@ case $JOB_TYPE in
             usage
         fi
         echo "Submitting MPI factor test job for $PUZZLE_FILE..."
-        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_factor_mpi2.pbs
+        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_factor_mpi.pbs
         ;;
     
     *)
