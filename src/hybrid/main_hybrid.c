@@ -71,15 +71,12 @@ int main(int argc, char* argv[]) {
 
     // Master process prints header information
     if (g_mpi_rank == 0) {
-        log_info("======================================");
-        log_info("Futoshiki Hybrid MPI+OpenMP Solver");
-        log_info("======================================");
-        log_info("Running with %d MPI processes", g_mpi_size);
-        log_info("OMP max threads per process: %d", omp_get_max_threads());
+        log_info("=============================");
+        log_info("Futoshiki Hybrid Solver");
+        log_info("=============================");
+        log_info("Running with %d process(es) and %d OpenMP thread(s) per process", g_mpi_size, omp_get_max_threads());
         log_info("Puzzle file: %s", filename);
-        log_info("Mode: %s pre-coloring", use_precoloring ? "WITH" : "WITHOUT");
-        log_info("MPI Task Factor: %.2f | OpenMP Task Factor: %.2f\n", mpi_task_factor,
-                 omp_task_factor);
+        log_info("Mode: %s pre-coloring\n", use_precoloring ? "WITH" : "WITHOUT");
     }
 
     // Call the main hybrid solver function
