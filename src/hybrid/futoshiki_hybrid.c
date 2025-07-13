@@ -27,7 +27,7 @@ typedef enum {
 } MessageTag;
 
 // --- Function Prototypes for internal logic ---
-static bool color_g_hybrid(Futoshiki* puzzle, int solution[MAX_N][MAX_N]);
+static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]);
 static void mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]);
 static void mpi_worker(Futoshiki* puzzle);
 static bool solve_work_unit_with_omp(Futoshiki* puzzle, WorkUnit* work_unit,
@@ -276,7 +276,7 @@ static void mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
  * Determines whether the current process is the master or a worker and
  * calls the appropriate function.
  */
-static bool color_g_hybrid(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
+static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     if (g_mpi_size <= 1) {
         log_info(
             "Only 1 MPI process. Falling back to OpenMP-only solver on a single node.");
@@ -343,14 +343,21 @@ SolverStats solve_puzzle(const char* filename, bool use_precoloring,
 
     int solution[MAX_N][MAX_N] = {{0}};
     double start_coloring = MPI_Wtime();
-    bool found = color_g_hybrid(&puzzle, solution);
+    bool found = color_g(&puzzle, solution);
     stats.coloring_time = MPI_Wtime() - start_coloring;
 
     // The master process aggregates and prints the final statistics.
     if (g_mpi_rank == 0) {
         stats.found_solution = found;
         stats.total_time = stats.precolor_time + stats.coloring_time;
-        // Other stats calculation...
+        stats.remaining_colors = 0;
+        for (int row = 0; row < puzzle.size; row++) {
+            for (int col = 0; col < puzzle.size; col++) {
+                stats.remaining_colors += puzzle.pc_lengths[row][col];
+            }
+        }
+        stats.total_processed = puzzle.size * puzzle.size * puzzle.size;
+
         if (print_solution) {
             if (stats.found_solution) {
                 printf("\nSolution:\n");
@@ -360,7 +367,7 @@ SolverStats solve_puzzle(const char* filename, bool use_precoloring,
             }
         }
     } else {
-        stats.found_solution = false; // Only master reports the final stats.
+        stats.found_solution = false;  // Only master reports stats
     }
 
     return stats;
