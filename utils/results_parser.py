@@ -17,14 +17,14 @@ def _parse_single_run_block(block_content, job_id_from_file=None):
         data['implementation'] = 'omp'
     elif 'Futoshiki Sequential Solver' in block_content:
         data['implementation'] = 'seq'
-    elif 'Futoshiki Hybrid Solver' in block_content: # Keep for future compatibility
+    elif 'Futoshiki Hybrid Solver' in block_content:
         data['implementation'] = 'hybrid'
     else:
         data['implementation'] = 'unknown'
 
     # --- Regex patterns to find the data ---
     patterns = {
-        'puzzle_name': r"Puzzle(?: file)?: (.+)", # Handles "Puzzle:" and "Puzzle file:"
+        'puzzle_name': r"Puzzle(?: file)?: (.+)",
         'task_factor': r"\* ([\d.]+) factor",
         'depth': r"Chosen depth: (\d+)",
         'work_units': r"Generated (\d+) work units",
@@ -41,23 +41,46 @@ def _parse_single_run_block(block_content, job_id_from_file=None):
 
     # --- Specific patterns for Processors and Threads based on implementation ---
     if data['implementation'] == 'mpi':
-        # This line has been updated as per your request.
-        match = re.search(r"Running with (\d+) process", block_content)
-        data['num_processors'] = match.group(1).strip() if match else '1'
+        # Handles "Running with X process(es)" OR "Processes: X"
+        match = re.search(r"Running with (\d+) process|Processes: (\d+)", block_content)
+        if match:
+            # One of the groups will have the value, the other will be None
+            procs = match.group(1) or match.group(2)
+            data['num_processors'] = procs.strip()
+        else:
+            data['num_processors'] = '1'
         data['num_threads'] = '1' # MPI runs are single-threaded per process
+
     elif data['implementation'] == 'omp':
-        # Corrected to handle "(s)" in the log file.
-        match = re.search(r"Running with (\d+) OpenMP thread", block_content)
-        data['num_threads'] = match.group(1).strip() if match else '1'
+        # Handles "Running with X thread(s)" OR "Threads: X" OR "OMP Threads...: X"
+        match = re.search(r"Running with (\d+) OpenMP thread|OMP Threads(?: per process)?: (\d+)|Threads: (\d+)", block_content)
+        if match:
+            # Check all possible capture groups
+            threads = match.group(1) or match.group(2) or match.group(3)
+            data['num_threads'] = threads.strip()
+        else:
+            data['num_threads'] = '1'
         data['num_processors'] = '1' # OpenMP is single-process
+
     elif data['implementation'] == 'seq':
         data['num_processors'] = '1'
         data['num_threads'] = '1'
+
     elif data['implementation'] == 'hybrid':
-         proc_match = re.search(r"Running with (\d+) process", block_content)
-         thread_match = re.search(r"and (\d+) OpenMP thread(s) per process", block_content)
-         data['num_processors'] = proc_match.group(1).strip() if proc_match else 'N/A'
-         data['num_threads'] = thread_match.group(1).strip() if thread_match else 'N/A'
+        # Processes
+        proc_match = re.search(r"Running with (\d+) process|Processes: (\d+)", block_content)
+        if proc_match:
+            data['num_processors'] = (proc_match.group(1) or proc_match.group(2)).strip()
+        else:
+            data['num_processors'] = 'N/A'
+        
+        # Threads
+        thread_match = re.search(r"and (\d+) OpenMP thread|OMP Threads per process: (\d+)", block_content)
+        if thread_match:
+            data['num_threads'] = (thread_match.group(1) or thread_match.group(2)).strip()
+        else:
+            data['num_threads'] = 'N/A'
+            
     else:
         data['num_processors'] = 'N/A'
         data['num_threads'] = 'N/A'
@@ -247,6 +270,10 @@ if __name__ == '__main__':
     parser.add_argument("path", help="Path to the solver's output log file or a directory of log files.")
     parser.add_argument("--csv", default="results/results_dataset.csv", help="Path for the output CSV file.")
     args = parser.parse_args()
+
+    if os.path.isdir(args.csv):
+            print(f"Error: The CSV path '{args.csv}' is a directory. Please provide a valid file path.")
+            exit(1)
 
     input_path = args.path
     files_to_process = []

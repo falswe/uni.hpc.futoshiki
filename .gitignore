@@ -29,3 +29,6 @@ futoshiki_mpi
 # IDE files
 .idea/
 *.iml
+
+# results files
+results/
