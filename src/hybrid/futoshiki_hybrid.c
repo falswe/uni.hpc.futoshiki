@@ -89,13 +89,13 @@ static bool solve_work_unit_omp(Futoshiki* puzzle, WorkUnit* received_wu, int so
         return color_g_seq(&sub_puzzle, solution, start_row, start_col);
     }
 
-#pragma omp parallel shared(found_solution, solution)
+#pragma omp parallel
     {
 #pragma omp single
         {
             log_verbose("Worker %d: Spawning %d OMP tasks.", g_mpi_rank, num_omp_units);
             for (int i = 0; i < num_omp_units && !found_solution; i++) {
-#pragma omp task firstprivate(i)
+#pragma omp task firstprivate(i) shared(found_solution)
                 {
                     if (!found_solution) {
                         int local_solution[MAX_N][MAX_N];
