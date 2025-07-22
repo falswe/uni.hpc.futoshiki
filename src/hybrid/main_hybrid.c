@@ -1,12 +1,9 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <omp.h>
 
 #include "../common/comparison.h"
 #include "futoshiki_hybrid.h"
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     // Initialize the hybrid MPI+OpenMP environment
     init_hybrid(&argc, &argv);
 
@@ -16,26 +13,28 @@ int main(int argc, char* argv[]) {
             fprintf(stderr, "Usage: %s <puzzle_file> [options]\n", argv[0]);
             fprintf(stderr, "Options:\n");
             fprintf(stderr, "  -n : Disable pre-coloring optimization\n");
-            fprintf(stderr, "  -q : Quiet mode (only essential results and errors)\n");
-            fprintf(stderr, "  -v : Verbose mode (shows progress and details)\n");
+            fprintf(stderr,
+                    "  -q : Quiet mode (only essential results and errors)\n");
+            fprintf(stderr,
+                    "  -v : Verbose mode (shows progress and details)\n");
             fprintf(stderr, "  -d : Debug mode (shows all messages)\n");
-            fprintf(stderr,
-                    "  -mf <factor>: Set MPI task generation factor (for master-worker "
-                    "distribution)\n");
-            fprintf(stderr,
-                    "  -of <factor>: Set OpenMP task generation factor (for thread-level "
-                    "distribution)\n");
+            fprintf(stderr, "  -mf <factor>: Set MPI task generation factor "
+                            "(for master-worker "
+                            "distribution)\n");
+            fprintf(stderr, "  -of <factor>: Set OpenMP task generation factor "
+                            "(for thread-level "
+                            "distribution)\n");
         }
         finalize_hybrid();
         return 1;
     }
 
     // Default parameters
-    const char* filename = argv[1];
+    const char *filename = argv[1];
     bool use_precoloring = true;
     LogLevel log_level = LOG_INFO;
-    double mpi_task_factor = 32.0; // Default MPI factor
-    double omp_task_factor = 16.0; // Default OMP factor
+    double mpi_task_factor = 32.0;
+    double omp_task_factor = 16.0;
 
     // Parse command-line arguments
     for (int i = 2; i < argc; i++) {
@@ -50,14 +49,16 @@ int main(int argc, char* argv[]) {
         } else if (strcmp(argv[i], "-mf") == 0 && i + 1 < argc) {
             mpi_task_factor = atof(argv[++i]);
             if (mpi_task_factor <= 0) {
-                if (g_mpi_rank == 0) fprintf(stderr, "Error: Invalid MPI task factor\n");
+                if (g_mpi_rank == 0)
+                    fprintf(stderr, "Error: Invalid MPI task factor\n");
                 finalize_hybrid();
                 return 1;
             }
         } else if (strcmp(argv[i], "-of") == 0 && i + 1 < argc) {
             omp_task_factor = atof(argv[++i]);
             if (omp_task_factor <= 0) {
-                if (g_mpi_rank == 0) fprintf(stderr, "Error: Invalid OpenMP task factor\n");
+                if (g_mpi_rank == 0)
+                    fprintf(stderr, "Error: Invalid OpenMP task factor\n");
                 finalize_hybrid();
                 return 1;
             }
@@ -74,14 +75,19 @@ int main(int argc, char* argv[]) {
         log_info("=============================");
         log_info("Futoshiki Hybrid Solver");
         log_info("=============================");
-        log_info("Running with %d process(es) and %d OpenMP thread(s) per process", g_mpi_size, omp_get_max_threads());
+        log_info(
+            "Running with %d process(es) and %d OpenMP thread(s) per process",
+            g_mpi_size, omp_get_max_threads());
         log_info("Puzzle file: %s", filename);
-        log_info("Mode: %s pre-coloring\n", use_precoloring ? "WITH" : "WITHOUT");
+        log_info("Mode: %s pre-coloring\n",
+                 use_precoloring ? "WITH" : "WITHOUT");
     }
 
     // Call the main hybrid solver function
-    // The third argument controls whether the solution is printed (only by master)
-    SolverStats stats = solve_puzzle(filename, use_precoloring, g_mpi_rank == 0);
+    // The third argument controls whether the solution is printed (only by
+    // master)
+    SolverStats stats =
+        solve_puzzle(filename, use_precoloring, g_mpi_rank == 0);
 
     // Master process prints the final statistics
     if (g_mpi_rank == 0 && stats.found_solution) {

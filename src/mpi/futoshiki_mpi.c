@@ -7,7 +7,7 @@
 
 int g_mpi_rank = 0;
 int g_mpi_size = 1;
-static double g_mpi_task_factor = 32.0;
+static double g_mpi_task_factor = 1.0;
 
 typedef enum {
     TAG_WORK_REQUEST = 1,
