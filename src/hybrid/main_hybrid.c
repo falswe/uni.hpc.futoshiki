@@ -33,8 +33,8 @@ int main(int argc, char *argv[]) {
     const char *filename = argv[1];
     bool use_precoloring = true;
     LogLevel log_level = LOG_INFO;
-    double mpi_task_factor = 32.0;
-    double omp_task_factor = 16.0;
+    double mpi_task_factor = 1.0;
+    double omp_task_factor = 1.0;
 
     // Parse command-line arguments
     for (int i = 2; i < argc; i++) {
