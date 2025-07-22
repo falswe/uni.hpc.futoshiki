@@ -3,6 +3,16 @@ import csv
 import os
 import argparse
 from datetime import datetime
+from pathlib import Path
+
+def find_project_root(start: Path) -> Path:
+    for parent in [start] + list(start.parents):
+        if (parent / ".git").exists():
+            return parent
+    raise FileNotFoundError("Project root not found")
+
+PROJECT_ROOT = find_project_root(Path(__file__).resolve().parent)
+output_folder = PROJECT_ROOT / 'results'
 
 def _parse_single_run_block(block_content, job_id_from_file=None):
     """
@@ -149,8 +159,8 @@ def save_as_formatted_text(data_list, input_path):
         
     base_name = os.path.basename(input_path)
     output_filename = f"parsed_{os.path.splitext(base_name)[0]}.txt"
-    
-    output_dir = "results/parsed_summaries"
+
+    output_dir = f"{output_folder}/parsed_summaries"
     os.makedirs(output_dir, exist_ok=True)
     
     full_output_path = os.path.join(output_dir, output_filename)
@@ -268,7 +278,7 @@ def update_results_csv(newly_parsed_data, csv_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Parse Futoshiki solver output and calculate performance.")
     parser.add_argument("path", help="Path to the solver's output log file or a directory of log files.")
-    parser.add_argument("--csv", default="results/results_dataset.csv", help="Path for the output CSV file.")
+    parser.add_argument("--csv", default=f"{output_folder}/results_dataset.csv", help="Path for the output CSV file.")
     args = parser.parse_args()
 
     if os.path.isdir(args.csv):
