@@ -1,0 +1,75 @@
+Building Hybrid version...
+Cleaning build artifacts...
+mpicc -std=c99 -Wall -g -O2 -fopenmp -c src/hybrid/futoshiki_hybrid.c -o obj/futoshiki_hybrid.o
+mpicc -std=c99 -Wall -g -O2 -fopenmp -c src/hybrid/main_hybrid.c -o obj/main_hybrid.o
+mpicc -std=c99 -Wall -g -O2 -c src/common/comparison.c -o obj/comparison.o
+mpicc -std=c99 -Wall -g -O2 -c src/common/futoshiki_common.c -o obj/futoshiki_common.o
+mpicc -std=c99 -Wall -g -O2 -c src/common/logger.c -o obj/logger.o
+mpicc -std=c99 -Wall -g -O2 -c src/common/parallel_work_distribution.c -o obj/parallel_work_distribution.o
+mpicc -std=c99 -Wall -g -O2 -fopenmp obj/futoshiki_hybrid.o obj/main_hybrid.o obj/comparison.o obj/futoshiki_common.o obj/logger.o obj/parallel_work_distribution.o -o bin/futoshiki_hybrid -lm
+==============================
+Futoshiki Hybrid MPI+OMP Solver
+==============================
+Job ID: 3418971.hpc-head-n1.unitn.it
+Node: hpc-c06-node01.unitn.it
+Date: Tue Jul 22 20:45:19 CEST 2025
+Puzzle: puzzles/9x9_hard_3.txt
+Total CPUs (PBS_NCPUS): 
+Number of Nodes (PBS_NUM_NODES): 
+MPI Processes: 8
+OMP Threads per process: 4
+Total Cores: 32
+
+--- Testing with 8 processes and 4 threads on puzzles/9x9_hard_3.txt ---
+[INFO][RANK 0] =============================
+[INFO][RANK 0] Futoshiki Hybrid Solver
+[INFO][RANK 0] =============================
+[INFO][RANK 0] Running with 8 process(es) and 4 OpenMP thread(s) per process
+[INFO][RANK 0] Puzzle file: puzzles/9x9_hard_3.txt
+[INFO][RANK 0] Mode: WITH pre-coloring
+
+[INFO][RANK 0] MPI (Master) task generation strategy: target = 7 workers * 1.00 factor = 7 tasks
+[INFO][RANK 0] Chosen depth: 3 (will generate 38 work units)
+[INFO][RANK 0] Generated 38 work units at depth 3
+
+Solution:
+ 8 >  5    1    7    4    3    9    2    6
+                          ^               
+ 1    9    5    2    6    4    7 <  8    3
+                               v          
+ 5    6    3 <  8    1    7    2    9    4
+                                    v     
+ 2 >  1    8 >  5 >  3    9    4    6    7
+ ^         ^                   ^         v
+ 3    8    9    4 <  7    2    6    1    5
+                                          
+ 6    4    2    9    5 <  8    3    7 >  1
+ v                                        
+ 4 >  2    7    6    8    1 <  5 >  3    9
+                     ^                    
+ 7    3    6    1    9    5    8    4    2
+           v    ^         ^               
+ 9    7    4 >  3 >  2    6    1    5    8
+
+[INFO][RANK 0] 
+--- Final Statistics ---
+
+Hybrid Solver Results:
+========================================
+Solution found: Yes
+
+Color Statistics:
+  Colors removed by pre-coloring: 317
+  Colors remaining: 292
+  Search space reduction: 52.1%
+
+Timing Breakdown:
+  Pre-coloring phase: 0.000049 seconds
+  Solving phase:      2.366932 seconds
+  Total time:         2.366982 seconds
+
+Time Distribution:
+  Pre-coloring: 0.0%
+  Solving:      100.0%
+
+Job completed at Tue Jul 22 20:45:23 CEST 2025

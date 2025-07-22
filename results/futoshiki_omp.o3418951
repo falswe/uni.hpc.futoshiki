@@ -1,0 +1,88 @@
+Building OpenMP version...
+Cleaning build artifacts...
+gcc -std=c99 -Wall -g -O2 -fopenmp -c src/openmp/futoshiki_omp.c -o obj/futoshiki_omp.o
+gcc -std=c99 -Wall -g -O2 -fopenmp -c src/openmp/main_omp.c -o obj/main_omp.o
+gcc -std=c99 -Wall -g -O2 -c src/common/comparison.c -o obj/comparison.o
+gcc -std=c99 -Wall -g -O2 -c src/common/futoshiki_common.c -o obj/futoshiki_common.o
+gcc -std=c99 -Wall -g -O2 -c src/common/logger.c -o obj/logger.o
+gcc -std=c99 -Wall -g -O2 -c src/common/parallel_work_distribution.c -o obj/parallel_work_distribution.o
+gcc -std=c99 -Wall -g -O2 -fopenmp obj/futoshiki_omp.o obj/main_omp.o obj/comparison.o obj/futoshiki_common.o obj/logger.o obj/parallel_work_distribution.o -o bin/futoshiki_omp -lm
+=======================
+Futoshiki OpenMP Solver
+=======================
+Job ID: 3418951.hpc-head-n1.unitn.it
+Node: hpc-c03-node23.unitn.it
+Date: Tue Jul 22 20:33:37 CEST 2025
+Puzzle: puzzles/9x9_hard_1.txt
+Threads: 32
+
+--- Testing with 32 threads on puzzles/9x9_hard_1.txt ---
+[INFO] ================================
+[INFO] Futoshiki OpenMP Parallel Solver
+[INFO] ================================
+[INFO] Running with 32 OpenMP thread(s)
+[INFO] Puzzle file: puzzles/9x9_hard_1.txt
+[INFO] Mode: WITH pre-coloring
+
+Initial puzzle:
+ 3    8    0    0    4    0 <  0    0    0
+      v    ^         ^         ^    ^     
+ 0    0    0    0    0 <  0    0    0 >  0
+ ^              v                   ^     
+ 0    0 <  0    0 >  0 >  0 <  0    0    0
+                          v              ^
+ 0 <  0 <  0    0 >  0 >  0 <  0    0    0
+                v                   v     
+ 0 <  0 <  0    0    0    0    0    0    3
+                     ^         ^          
+ 5    0 <  0    0 >  7    0    0    0    0
+                                         ^
+ 0 >  0 >  3    0    0 >  0    0    0    0
+ ^                   ^         v    ^     
+ 0    0    0 >  0    0    0 <  0    0    0
+                v                   v     
+ 0    0    0    0    0    0    0    5    0
+
+[INFO] OpenMP task generation strategy: target = 32 workers * 1.00 factor = 32 tasks
+[INFO] Chosen depth: 3 (will generate 64 work units)
+[INFO] Generated 64 work units at depth 3
+
+Solution:
+ 3    8    1    9    4    6 <  7    2    5
+      v    ^         ^         ^    ^     
+ 1    4    5    7    6 <  8    9    3 >  2
+ ^              v                   ^     
+ 9    1 <  2    6 >  5 >  3 <  8    7    4
+                          v              ^
+ 2 <  6 <  8    5 >  3 >  1 <  4    9    7
+                v                   v     
+ 6 <  7 <  9    4    2    5    1    8    3
+                     ^         ^          
+ 5    3 <  4    8 >  7    9    2    1    6
+                                         ^
+ 7 >  5 >  3    1    8 >  2    6    4    9
+ ^                   ^         v    ^     
+ 8    2    7 >  3    9    4 <  5    6    1
+                v                   v     
+ 4    9    6    2    1    7    3    5    8
+
+
+OpenMP Solver Results:
+========================================
+Solution found: Yes
+
+Color Statistics:
+  Colors removed by pre-coloring: 232
+  Colors remaining: 433
+  Search space reduction: 34.9%
+
+Timing Breakdown:
+  Pre-coloring phase: 0.000054 seconds
+  Solving phase:      7.944985 seconds
+  Total time:         7.945039 seconds
+
+Time Distribution:
+  Pre-coloring: 0.0%
+  Solving:      100.0%
+
+Job completed at Tue Jul 22 20:33:45 CEST 2025

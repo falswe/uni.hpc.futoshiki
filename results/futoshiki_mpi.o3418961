@@ -1,0 +1,90 @@
+Building MPI version...
+Cleaning build artifacts...
+mpicc -std=c99 -Wall -g -O2 -c src/mpi/futoshiki_mpi.c -o obj/futoshiki_mpi.o
+mpicc -std=c99 -Wall -g -O2 -c src/mpi/main_mpi.c -o obj/main_mpi.o
+mpicc -std=c99 -Wall -g -O2 -c src/common/comparison.c -o obj/comparison.o
+mpicc -std=c99 -Wall -g -O2 -c src/common/futoshiki_common.c -o obj/futoshiki_common.o
+mpicc -std=c99 -Wall -g -O2 -c src/common/logger.c -o obj/logger.o
+mpicc -std=c99 -Wall -g -O2 -c src/common/parallel_work_distribution.c -o obj/parallel_work_distribution.o
+mpicc -std=c99 -Wall -g -O2 obj/futoshiki_mpi.o obj/main_mpi.o obj/comparison.o obj/futoshiki_common.o obj/logger.o obj/parallel_work_distribution.o -o bin/futoshiki_mpi -lm
+====================
+Futoshiki MPI Solver
+====================
+Job ID: 3418961.hpc-head-n1.unitn.it
+Node: hpc-c06-node01.unitn.it
+Date: Tue Jul 22 20:38:28 CEST 2025
+Puzzle: puzzles/9x9_hard_2.txt
+Processes: 32
+
+--- Testing with 32 processes on puzzles/9x9_hard_2.txt ---
+[INFO][RANK 0] =============================
+[INFO][RANK 0] Futoshiki MPI Parallel Solver
+[INFO][RANK 0] =============================
+[INFO][RANK 0] Running with 32 processes
+[INFO][RANK 0] Puzzle file: puzzles/9x9_hard_2.txt
+[INFO][RANK 0] Mode: WITH pre-coloring
+
+Initial puzzle:
+ 0    0    2    8    0    4 >  0    0    0
+                                          
+ 0    0    9    5 <  0    8    0    0    0
+                ^    v                    
+ 0 <  0    6    0    0 >  0    0    0    0
+           v                        ^    ^
+ 0    0    0 >  2    0    0    0    0    0
+                          ^    v    ^     
+ 0 <  0    0    0 >  0    0    0    0    0
+ v         v                              
+ 0    0    0    9    0 >  0 >  0    0 <  0
+           v         ^                    
+ 0    0 <  0 <  0    0 <  0    0    0    0
+                               v    ^     
+ 0    0 >  0    0    0    6    0    5    0
+ ^                                        
+ 0 <  0    0    0 >  5    2    8 <  0    0
+
+[INFO][RANK 0] MPI task generation strategy: target = 31 workers * 1.00 factor = 31 tasks
+[INFO][RANK 0] Chosen depth: 3 (will generate 100 work units)
+[INFO][RANK 0] Generated 100 work units at depth 3
+
+Solution:
+ 7    5    2    8    9    4 >  3    6    1
+                                          
+ 6    3    9    5 <  7    8    1    4    2
+                ^    v                    
+ 5 <  8    6    7    3 >  1    9    2    4
+           v                        ^    ^
+ 9    1    4 >  2    8    5    7    3    6
+                          ^    v    ^     
+ 2 <  4    7    3 >  1    9    6    8    5
+ v         v                              
+ 1    6    5    9    4 >  3 >  2    7 <  8
+           v         ^                    
+ 8    2 <  3 <  4    6 <  7    5    1    9
+                               v    ^     
+ 3    9 >  8    1    2    6    4    5    7
+ ^                                        
+ 4 <  7    1    6 >  5    2    8 <  9    3
+
+[INFO][RANK 0] 
+--- Final Statistics ---
+
+MPI Solver Results:
+========================================
+Solution found: Yes
+
+Color Statistics:
+  Colors removed by pre-coloring: 316
+  Colors remaining: 301
+  Search space reduction: 51.2%
+
+Timing Breakdown:
+  Pre-coloring phase: 0.000067 seconds
+  Solving phase:      7.220586 seconds
+  Total time:         7.220653 seconds
+
+Time Distribution:
+  Pre-coloring: 0.0%
+  Solving:      100.0%
+
+Job completed at Tue Jul 22 20:38:36 CEST 2025

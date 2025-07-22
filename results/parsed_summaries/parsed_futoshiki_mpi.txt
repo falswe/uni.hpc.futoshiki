@@ -1,0 +1,17 @@
+Source File: futoshiki_mpi.o3418962
+Generated on: 2025-07-22 20:54:19
+Total Runs Found: 1
+
+==================== RUN 1 ====================
+--- Run Configuration ---
+  Puzzle Name:         puzzles/9x9_hard_3.txt
+  Implementation:      MPI
+  Job ID:              3418962
+  MPI Processes:       32
+  OMP Threads:         1
+
+--- Performance Metrics ---
+  Total Time:          1.341737 seconds
+  Speedup:             N/A
+  Efficiency:          N/A
+==================================================

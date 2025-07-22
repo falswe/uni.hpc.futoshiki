@@ -31,4 +31,4 @@ futoshiki_mpi
 *.iml
 
 # results files
-results/
+# results/

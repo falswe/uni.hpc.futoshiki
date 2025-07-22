@@ -1,1 +1,12 @@
 puzzle_name,implementation,job_id,num_processors,num_threads,task_factor,depth,work_units,colors_removed,colors_remaining,space_reduction,solving_time,total_time,speedup,efficiency
+puzzles/9x9_hard_1.txt,hybrid,3418947,4,8,1.00,1,5,232,433,34.9,11.298967,11.299020,N/A,N/A
+puzzles/9x9_hard_1.txt,hybrid,3418963,8,4,1.00,2,25,232,433,34.9,10.065994,10.066047,N/A,N/A
+puzzles/9x9_hard_1.txt,mpi,3418960,32,1,1.00,3,64,232,433,34.9,9.746900,9.746959,N/A,N/A
+puzzles/9x9_hard_1.txt,omp,3418951,1,32,1.00,3,64,232,433,34.9,7.944985,7.945039,N/A,N/A
+puzzles/9x9_hard_2.txt,hybrid,3418948,4,8,1.00,1,6,316,301,51.2,11.983932,11.983995,N/A,N/A
+puzzles/9x9_hard_2.txt,hybrid,3418964,8,4,1.00,2,30,316,301,51.2,24.763982,24.764041,N/A,N/A
+puzzles/9x9_hard_2.txt,mpi,3418961,32,1,1.00,3,100,316,301,51.2,7.220586,7.220653,N/A,N/A
+puzzles/9x9_hard_3.txt,hybrid,3418949,4,8,1.00,2,7,317,292,52.1,1.676182,1.676231,N/A,N/A
+puzzles/9x9_hard_3.txt,hybrid,3418971,8,4,1.00,3,38,317,292,52.1,2.366932,2.366982,N/A,N/A
+puzzles/9x9_hard_3.txt,mpi,3418962,32,1,1.00,3,38,317,292,52.1,1.341680,1.341737,N/A,N/A
+puzzles/9x9_hard_3.txt,omp,3418957,1,32,1.00,3,38,317,292,52.1,1.082237,1.082297,N/A,N/A

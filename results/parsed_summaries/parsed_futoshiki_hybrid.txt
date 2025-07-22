@@ -1,0 +1,17 @@
+Source File: futoshiki_hybrid.o3418948
+Generated on: 2025-07-22 20:54:19
+Total Runs Found: 1
+
+==================== RUN 1 ====================
+--- Run Configuration ---
+  Puzzle Name:         puzzles/9x9_hard_2.txt
+  Implementation:      HYBRID
+  Job ID:              3418948
+  MPI Processes:       4
+  OMP Threads:         8
+
+--- Performance Metrics ---
+  Total Time:          11.983995 seconds
+  Speedup:             N/A
+  Efficiency:          N/A
+==================================================
