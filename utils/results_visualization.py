@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 from pathlib import Path
+import numpy as np
 
 def find_project_root(start: Path) -> Path:
     """Finds the project root by looking for a .git directory."""
@@ -199,6 +200,55 @@ def plot_factor_solving_time(df):
         plt.savefig(f'{output_folder}/factor_solving_time_omp_{os.path.basename(puzzle).replace(".txt", "")}.png')
         plt.close()
 
+def plot_comparison_solving_time(df):
+    """
+    Plots a comparison of solving time vs. total computational units for all implementations.
+    """
+    print("Generating comparison plots for solving time...")
+    
+    df_copy = df.copy()
+
+    # --- MODIFIED SECTION ---
+    # Create a unified 'computational_units' column for a fair comparison.
+    conditions = [
+        (df_copy['implementation'] == 'hybrid'),
+        (df_copy['implementation'] == 'mpi'),
+        (df_copy['implementation'] == 'omp')
+    ]
+    choices = [
+        df_copy['num_processors'] * df_copy['num_threads'], # Hybrid: procs * threads
+        df_copy['num_processors'],                          # MPI: procs
+        df_copy['num_threads']                              # OMP: threads
+    ]
+    df_copy['computational_units'] = np.select(conditions, choices, default=0)
+    # --- END MODIFIED SECTION ---
+    
+    # Group by puzzle to create a separate plot for each
+    for puzzle, puzzle_df in df_copy.groupby('puzzle_name'):
+        plt.figure(figsize=(12, 8))
+        
+        # Plot each implementation on the same graph
+        for impl, impl_df in puzzle_df.groupby('implementation'):
+            # Sort by the new unified computational units column
+            sorted_df = impl_df.sort_values('computational_units')
+            if not sorted_df.empty:
+                 # For hybrid, the label should be more descriptive
+                if impl == 'hybrid':
+                    # Create a descriptive label for each hybrid configuration
+                    label = f"Hybrid ({int(sorted_df['num_processors'].iloc[0])}p x {int(sorted_df['num_threads'].iloc[0])}t)"
+                    plt.plot(sorted_df['computational_units'], sorted_df['solving_time'], marker='s', linestyle='--', label=label)
+                else: # MPI and OMP
+                    plt.plot(sorted_df['computational_units'], sorted_df['solving_time'], marker='o', linestyle='-', label=impl.upper())
+        
+        plt.title(f'Solving Time vs. Total Computational Units for {os.path.basename(puzzle)}')
+        plt.xlabel('Total Computational Units (Cores)')
+        plt.ylabel('Solving Time (s)')
+        plt.grid(True, which='both', linestyle='--')
+        plt.legend()
+        plt.savefig(f'{output_folder}/comparison_solving_time_{os.path.basename(puzzle).replace(".txt", "")}.png')
+        plt.close()
+
+
 def main():
     """Main function to read the CSV, create folders, and generate all plots."""
     results_file = PROJECT_ROOT / 'results/results_dataset.csv'
@@ -226,6 +276,9 @@ def main():
 
     # Generate Task Factor analysis plots using the cleaned (but not best-of) data
     plot_factor_solving_time(df_cleaned)
+    
+    # Generate the new, corrected comparison plot
+    plot_comparison_solving_time(df_best)
 
     print(f"\nAll plots have been generated successfully in the '{output_folder}' folder.")
 
