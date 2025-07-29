@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
     bool use_precoloring = true;
     LogLevel log_level = LOG_INFO;
     int requested_threads = 0;
-    double task_factor = 4.0;
+    double task_factor = 1.0;
 
     for (int i = 2; i < argc; i++) {
         if (strcmp(argv[i], "-n") == 0) {
