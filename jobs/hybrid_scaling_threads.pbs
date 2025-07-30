@@ -54,7 +54,7 @@ for threads in 1 2 4 8 16 32 64; do
     export OMP_NUM_THREADS=$threads
     export OMP_PROC_BIND=close
     export OMP_PLACES=cores
-    time mpirun.actual -np "$MPI_PROCS" ./bin/futoshiki_hybrid "$PUZZLE_FILE"
+    mpirun.actual -np "$MPI_PROCS" ./bin/futoshiki_hybrid "$PUZZLE_FILE"
     echo ""
 done
 

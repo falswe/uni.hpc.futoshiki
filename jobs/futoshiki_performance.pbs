@@ -57,16 +57,16 @@ run_test() {
     
     case $impl in
         sequential)
-            time ./bin/futoshiki_seq $puzzle -n
+            ./bin/futoshiki_seq $puzzle -n
             ;;
         openmp)
             export OMP_NUM_THREADS=$threads
             export OMP_PROC_BIND=close
             export OMP_PLACES=cores
-            time ./bin/futoshiki_omp $puzzle -n
+            ./bin/futoshiki_omp $puzzle -n
             ;;
         mpi)
-            time mpirun.actual -np $threads ./bin/futoshiki_mpi $puzzle -n
+            mpirun.actual -np $threads ./bin/futoshiki_mpi $puzzle -n
             ;;
     esac
     

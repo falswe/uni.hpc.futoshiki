@@ -56,7 +56,7 @@ export OMP_PLACES=cores
 for factor in $FACTORS_TO_TEST; do
     echo "--- Testing: omp with ${OMP_THREADS_TO_TEST} threads, Factor=$factor ---"
     # The -n and -f flags are passed to the solver
-    time ./bin/futoshiki_omp "$PUZZLE_FILE" -n -f "$factor"
+    ./bin/futoshiki_omp "$PUZZLE_FILE" -n -f "$factor"
     echo ""
 done
 

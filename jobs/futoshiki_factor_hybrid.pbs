@@ -51,15 +51,7 @@ run_test() {
     export OMP_PROC_BIND=close
     export OMP_PLACES=cores
 
-    # Use the `time` command with a format string to get just the real time
-    # The output is sent to stderr, so we redirect it
-    local TIMEFORMAT='%R'
-    local elapsed_time
-    
-    elapsed_time=$( { time mpirun.actual -np "$MPI_PROCS" ./bin/futoshiki_hybrid "$puzzle" -n -q -mf "$mpi_factor" -of "$omp_factor"; } 2>&1 )
-    
-    # Print results in a CSV-friendly format
-    echo "hybrid,$MPI_PROCS,$OMP_THREADS,$mpi_factor,$omp_factor,$elapsed_time"
+    mpirun.actual -np "$MPI_PROCS" ./bin/futoshiki_hybrid "$puzzle" -n -q -mf "$mpi_factor" -of "$omp_factor"
 }
 
 # --- Hybrid Factor Scaling Test ---
@@ -72,7 +64,6 @@ echo "Date: $(date)"
 echo "Puzzle: $PUZZLE_FILE"
 echo "MPI Processes: $MPI_PROCS | OMP Threads: $OMP_THREADS"
 echo ""
-echo "Implementation,MPI_Procs,OMP_Threads,MPI_Factor,OMP_Factor,Time(s)"
 
 for mpi_factor in $MPI_FACTORS_TO_TEST; do
     for omp_factor in $OMP_FACTORS_TO_TEST; do

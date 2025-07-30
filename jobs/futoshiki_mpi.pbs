@@ -50,7 +50,7 @@ echo ""
 
 # Run the test
 echo "--- Testing with $NPROCS processes on $PUZZLE_FILE ---"
-time mpirun.actual -np $NPROCS ./bin/futoshiki_mpi "$PUZZLE_FILE"
+mpirun.actual -np $NPROCS ./bin/futoshiki_mpi "$PUZZLE_FILE"
 echo ""
 
 echo "Job completed at $(date)"

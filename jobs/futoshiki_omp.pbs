@@ -52,7 +52,7 @@ export OMP_NUM_THREADS=$NPROCS
 
 # Run the test
 echo "--- Testing with $NPROCS threads on $PUZZLE_FILE ---"
-time ./bin/futoshiki_omp "$PUZZLE_FILE"
+./bin/futoshiki_omp "$PUZZLE_FILE"
 echo ""
 
 echo "Job completed at $(date)"

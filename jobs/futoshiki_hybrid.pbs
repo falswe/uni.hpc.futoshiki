@@ -57,7 +57,7 @@ export OMP_NUM_THREADS=$OMP_THREADS
 
 # Run the test
 echo "--- Testing with $MPI_PROCS processes and $OMP_THREADS threads on $PUZZLE_FILE ---"
-time mpirun.actual -np $MPI_PROCS ./bin/futoshiki_hybrid "$PUZZLE_FILE"
+mpirun.actual -np $MPI_PROCS ./bin/futoshiki_hybrid "$PUZZLE_FILE"
 echo ""
 
 echo "Job completed at $(date)"

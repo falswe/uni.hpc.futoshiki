@@ -42,7 +42,7 @@ echo ""
 
 # --- Run Sequential Program ---
 echo "--- Testing: sequential ---"
-time ./bin/futoshiki_seq "$PUZZLE_FILE"
+./bin/futoshiki_seq "$PUZZLE_FILE"
 echo ""
 
 echo "Sequential job completed at $(date)"

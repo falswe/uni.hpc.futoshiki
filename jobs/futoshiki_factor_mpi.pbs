@@ -51,7 +51,7 @@ echo ""
 for factor in $FACTORS_TO_TEST; do
     echo "--- Testing: mpi with ${MPI_PROCS_TO_TEST} processes, Factor=$factor ---"
     # The -n and -f flags are passed to the solver
-    time mpirun.actual -np "$MPI_PROCS_TO_TEST" ./bin/futoshiki_mpi "$PUZZLE_FILE" -n -f "$factor"
+    mpirun.actual -np "$MPI_PROCS_TO_TEST" ./bin/futoshiki_mpi "$PUZZLE_FILE" -n -f "$factor"
     echo ""
 done
 
