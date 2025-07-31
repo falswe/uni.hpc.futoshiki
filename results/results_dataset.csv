@@ -1,1 +1,1 @@
-puzzle_name,implementation,job_id,num_processors,num_threads,task_factor,depth,work_units,colors_removed,colors_remaining,space_reduction,solving_time,total_time,speedup,efficiency
+puzzle_name,implementation,test_type,job_id,num_processors,num_threads,task_factor,depth,work_units,colors_removed,colors_remaining,space_reduction,solving_time,total_time,speedup,efficiency
