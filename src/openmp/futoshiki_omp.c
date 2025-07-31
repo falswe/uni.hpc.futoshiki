@@ -44,7 +44,8 @@ static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
             log_verbose("Processing %d tasks with %d threads.", num_work_units,
                         omp_get_num_threads());
 
-            for (int i = 0; i < num_work_units && !found_solution; i++) {
+            // As OpenMP runtime's task scheduler works LIFO, prepare for this
+            for (int i = num_work_units - 1; i >= 0 && !found_solution; i--) {
                 WorkUnit* wu = &work_units[i];
 
 #pragma omp task firstprivate(i) shared(found_solution)
