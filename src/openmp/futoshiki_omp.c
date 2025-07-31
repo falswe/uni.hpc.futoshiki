@@ -40,23 +40,19 @@ static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     {
 #pragma omp single
         {
-            log_verbose("Processing %d tasks with %d threads.", num_work_units,
-                        omp_get_num_threads());
+            log_verbose("Worker %d: Spawning %d OMP tasks.", g_mpi_rank, num_work_units);
 
             for (int i = 0; i < num_work_units && !found_solution; i++) {
-                WorkUnit* wu = &work_units[i];
-
-                log_verbose("Before firstprivate: Thread %d processing work unit %d",
-                            omp_get_thread_num(), i);
-
 #pragma omp task firstprivate(i) shared(found_solution)
                 {
-                    log_verbose("After firstprivate: Thread %d processing work unit %d",
+                    log_verbose("Thread %d processing work unit %d",
                                 omp_get_thread_num(), i);
 
                     if (!found_solution) {
                         int local_solution[MAX_N][MAX_N];
+                        WorkUnit* wu = &work_units[i];
                         apply_work_unit(puzzle, wu, local_solution);
+
                         int start_row, start_col;
                         get_continuation_point(wu, &start_row, &start_col);
 
