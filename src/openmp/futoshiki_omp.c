@@ -14,7 +14,6 @@ void omp_set_task_factor(double factor) {
 }
 
 static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
-    log_verbose("Starting OpenMP parallel backtracking.");
     bool found_solution = false;
 
     int num_threads = omp_get_max_threads();
