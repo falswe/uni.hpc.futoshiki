@@ -9,13 +9,13 @@ int main(int argc, char* argv[]) {
 
     if (argc < 2) {
         if (g_mpi_rank == 0) {
-            fprintf(stderr, "Usage: %s <puzzle_file> [options]\n", argv[0]);
-            fprintf(stderr, "Options:\n");
-            fprintf(stderr, "  -n : Disable pre-coloring optimization\n");
-            fprintf(stderr, "  -q : Quiet mode (only essential results and errors)\n");
-            fprintf(stderr, "  -v : Verbose mode (shows progress and details)\n");
-            fprintf(stderr, "  -d : Debug mode (shows all messages)\n");
-            fprintf(stderr, "  -f <factor>: Set task generation factor (e.g., 1.0, 2.0)\n");
+            printf("Usage: %s <puzzle_file> [options]\n", argv[0]);
+            printf("Options:\n");
+            printf("  -n : Disable pre-coloring optimization\n");
+            printf("  -q : Quiet mode (only essential results and errors)\n");
+            printf("  -v : Verbose mode (shows progress and details)\n");
+            printf("  -d : Debug mode (shows all messages)\n");
+            printf("  -f <factor>: Set task generation factor (e.g., 1.0, 2.0)\n");
         }
         finalize_mpi();
         return 1;
