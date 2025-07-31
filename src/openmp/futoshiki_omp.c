@@ -47,8 +47,14 @@ static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
             for (int i = 0; i < num_work_units && !found_solution; i++) {
                 WorkUnit* wu = &work_units[i];
 
+                log_verbose("Before firstprivate: Thread %d processing work unit %d",
+                            omp_get_thread_num(), i);
+
 #pragma omp task firstprivate(i) shared(found_solution)
                 {
+                    log_verbose("After firstprivate: Thread %d processing work unit %d",
+                                omp_get_thread_num(), i);
+
                     if (!found_solution) {
                         int local_solution[MAX_N][MAX_N];
                         apply_work_unit(puzzle, wu, local_solution);
