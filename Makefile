@@ -56,17 +56,21 @@ hybrid: CC = $(MPICC)
 hybrid: $(HYBRID_TARGET)
 
 # === Build Rules ===
+# Note: Parallel implementations now depend on sequential object for color_g_seq
 
 $(SEQ_TARGET): $(SEQ_OBJ) $(COMMON_OBJ)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-$(OMP_TARGET): $(OMP_OBJ) $(COMMON_OBJ)
+# OpenMP needs sequential's color_g_seq function
+$(OMP_TARGET): $(OMP_OBJ) $(COMMON_OBJ) $(OBJ_DIR)/futoshiki_seq.o
 	$(CC) $(CFLAGS) $(OMPFLAGS) $^ -o $@ $(LDFLAGS)
 
-$(MPI_TARGET): $(MPI_OBJ) $(COMMON_OBJ)
+# MPI needs sequential's color_g_seq function
+$(MPI_TARGET): $(MPI_OBJ) $(COMMON_OBJ) $(OBJ_DIR)/futoshiki_seq.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-$(HYBRID_TARGET): $(HYBRID_OBJ) $(COMMON_OBJ)
+# Hybrid needs both sequential's color_g_seq and OpenMP's color_g_omp
+$(HYBRID_TARGET): $(HYBRID_OBJ) $(COMMON_OBJ) $(OBJ_DIR)/futoshiki_seq.o $(OBJ_DIR)/futoshiki_omp.o
 	$(CC) $(CFLAGS) $(OMPFLAGS) $^ -o $@ $(LDFLAGS)
 
 # === Compilation Rules ===
@@ -102,3 +106,6 @@ help:
 	@echo "  hybrid     - Build Hybrid MPI+OpenMP version"
 	@echo "  clean      - Remove build artifacts"
 	@echo "  help       - Show this message"
+	@echo ""
+	@echo "Note: Parallel implementations depend on sequential for color_g_seq"
+	@echo "      Hybrid additionally depends on OpenMP for color_g_omp"

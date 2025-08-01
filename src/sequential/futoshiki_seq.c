@@ -1,4 +1,32 @@
-#include "../common/futoshiki_common.h"
+#include "futoshiki_seq.h"
+
+bool color_g_seq(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col) {
+    if (row >= puzzle->size) {
+        return true;
+    }
+
+    if (col >= puzzle->size) {
+        return color_g_seq(puzzle, solution, row + 1, 0);
+    }
+
+    if (puzzle->board[row][col] != EMPTY) {
+        solution[row][col] = puzzle->board[row][col];
+        return color_g_seq(puzzle, solution, row, col + 1);
+    }
+
+    for (int i = 0; i < puzzle->pc_lengths[row][col]; i++) {
+        int color = puzzle->pc_list[row][col][i];
+        if (safe(puzzle, row, col, solution, color)) {
+            solution[row][col] = color;
+            if (color_g_seq(puzzle, solution, row, col + 1)) {
+                return true;
+            }
+            solution[row][col] = EMPTY;
+        }
+    }
+
+    return false;
+}
 
 static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     log_verbose("Starting sequential backtracking.");

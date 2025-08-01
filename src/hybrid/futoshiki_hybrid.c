@@ -4,6 +4,8 @@
 #include <omp.h>
 
 #include "../common/parallel_work_distribution.h"
+#include "../openmp/futoshiki_omp.h"
+#include "../sequential/futoshiki_seq.h"
 
 int g_mpi_rank = 0;
 int g_mpi_size = 1;
@@ -17,11 +19,6 @@ typedef enum {
     TAG_TERMINATE = 4,
     TAG_WORK_ASSIGNMENT = 5
 } MessageTag;
-
-static bool color_g_omp(Futoshiki* puzzle, int solution[MAX_N][MAX_N]);
-static void hybrid_worker(Futoshiki* puzzle);
-static bool hybrid_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]);
-static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]);
 
 void init_hybrid(int* argc, char*** argv) {
     MPI_Init(argc, argv);
@@ -40,87 +37,25 @@ void hybrid_set_mpi_task_factor(double factor) {
 void hybrid_set_omp_task_factor(double factor) {
     if (factor > 0) {
         g_omp_task_factor = factor;
+        // Also update the OpenMP implementation's task factor
+        omp_set_task_factor(factor);
     }
-}
-
-static bool color_g_omp(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
-    bool found_solution = false;
-
-    int num_threads = omp_get_max_threads();
-    int target_tasks = get_target_tasks(num_threads, g_omp_task_factor, "OpenMP (Worker)");
-    int depth = calculate_distribution_depth(puzzle, target_tasks);
-
-    if (depth == 0) {
-        log_info("Falling back to sequential solver (no work units generated).");
-        memcpy(solution, puzzle->board, sizeof(int) * MAX_N * MAX_N);
-        return color_g_seq(puzzle, solution, 0, 0);
-    }
-
-    int num_work_units;
-    WorkUnit* work_units = generate_work_units(puzzle, depth, &num_work_units);
-
-    if (!work_units || num_work_units == 0) {
-        log_info("Falling back to sequential solver (no work units generated).");
-        if (work_units) free(work_units);
-        memcpy(solution, puzzle->board, sizeof(int) * MAX_N * MAX_N);
-        return color_g_seq(puzzle, solution, 0, 0);
-    }
-
-#pragma omp parallel
-    {
-#pragma omp single
-        {
-            log_verbose("Worker %d: Spawning %d OMP tasks.", g_mpi_rank, num_work_units);
-
-            for (int i = 0; i < num_work_units && !found_solution; i++) {
-#pragma omp task firstprivate(i) shared(found_solution)
-                {
-                    log_verbose("Thread %d processing work unit %d", omp_get_thread_num(), i);
-
-                    if (!found_solution) {
-                        int local_solution[MAX_N][MAX_N];
-                        WorkUnit* wu = &work_units[i];
-                        apply_work_unit(puzzle, wu, local_solution);
-
-                        int start_row, start_col;
-                        get_continuation_point(wu, &start_row, &start_col);
-
-                        if (color_g_seq(puzzle, local_solution, start_row, start_col)) {
-#pragma omp critical
-                            {
-                                if (!found_solution) {
-                                    found_solution = true;
-                                    memcpy(solution, local_solution, sizeof(local_solution));
-                                    log_verbose("Thread %d found solution from task %d.",
-                                                omp_get_thread_num(), i);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-#pragma omp taskwait
-        }
-    }
-
-    free(work_units);
-    return found_solution;
 }
 
 static void hybrid_worker(Futoshiki* puzzle) {
     WorkUnit work_unit;
     MPI_Status status;
-    
+
     while (true) {
         int request = 1;
         MPI_Send(&request, 1, MPI_INT, 0, TAG_WORK_REQUEST, MPI_COMM_WORLD);
         MPI_Recv(&work_unit, sizeof(WorkUnit), MPI_BYTE, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-        
+
         if (status.MPI_TAG == TAG_TERMINATE) {
             log_verbose("Worker %d received termination signal.", g_mpi_rank);
             break;
         }
-        
+
         int local_solution[MAX_N][MAX_N];
         Futoshiki sub_puzzle;
         memcpy(&sub_puzzle, puzzle, sizeof(Futoshiki));

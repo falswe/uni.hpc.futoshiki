@@ -16,6 +16,16 @@
 SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_solution);
 
 /**
+ * Core OpenMP parallel solver using task-based parallelism
+ * Exported for use by hybrid implementation
+ *
+ * @param puzzle The Futoshiki puzzle instance
+ * @param solution The solution matrix to fill
+ * @return true if solution found, false otherwise
+ */
+bool color_g_omp(Futoshiki* puzzle, int solution[MAX_N][MAX_N]);
+
+/**
  * Sets the task generation multiplication factor for OpenMP.
  * @param factor The multiplier for the number of threads (e.g., 4.0 for 4x tasks).
  */

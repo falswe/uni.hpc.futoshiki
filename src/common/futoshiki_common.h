@@ -50,9 +50,8 @@ void filter_possible_colors(Futoshiki* puzzle, int row, int col);
 void process_uniqueness(Futoshiki* puzzle, int row, int col);
 int compute_pc_lists(Futoshiki* puzzle, bool use_precoloring);
 
-// === Solving functions ===
+// === Utility solving functions ===
 bool find_first_empty_cell(const Futoshiki* puzzle, int solution[MAX_N][MAX_N], int* row, int* col);
-bool color_g_seq(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col);
 
 // === I/O functions ===
 bool parse_futoshiki(const char* input, Futoshiki* puzzle);

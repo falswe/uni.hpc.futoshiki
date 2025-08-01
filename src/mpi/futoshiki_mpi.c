@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "../common/parallel_work_distribution.h"
+#include "../sequential/futoshiki_seq.h"
 
 int g_mpi_rank = 0;
 int g_mpi_size = 1;

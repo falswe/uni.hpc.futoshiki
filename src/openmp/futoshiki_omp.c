@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "../common/parallel_work_distribution.h"
+#include "../sequential/futoshiki_seq.h"
 
 static double g_omp_task_factor = 1.0;
 
@@ -13,7 +14,7 @@ void omp_set_task_factor(double factor) {
     }
 }
 
-static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
+bool color_g_omp(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     bool found_solution = false;
 
     int num_threads = omp_get_max_threads();
@@ -110,7 +111,7 @@ SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_
 
     int solution[MAX_N][MAX_N] = {{0}};
     double start_coloring = get_time();
-    stats.found_solution = color_g(&puzzle, solution);
+    stats.found_solution = color_g_omp(&puzzle, solution);
     stats.coloring_time = get_time() - start_coloring;
     stats.total_time = stats.precolor_time + stats.coloring_time;
 

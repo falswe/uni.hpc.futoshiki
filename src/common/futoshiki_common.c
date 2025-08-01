@@ -321,34 +321,6 @@ bool find_first_empty_cell(const Futoshiki* puzzle, int solution[MAX_N][MAX_N], 
     return found_empty;
 }
 
-bool color_g_seq(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col) {
-    if (row >= puzzle->size) {
-        return true;
-    }
-
-    if (col >= puzzle->size) {
-        return color_g_seq(puzzle, solution, row + 1, 0);
-    }
-
-    if (puzzle->board[row][col] != EMPTY) {
-        solution[row][col] = puzzle->board[row][col];
-        return color_g_seq(puzzle, solution, row, col + 1);
-    }
-
-    for (int i = 0; i < puzzle->pc_lengths[row][col]; i++) {
-        int color = puzzle->pc_list[row][col][i];
-        if (safe(puzzle, row, col, solution, color)) {
-            solution[row][col] = color;
-            if (color_g_seq(puzzle, solution, row, col + 1)) {
-                return true;
-            }
-            solution[row][col] = EMPTY;
-        }
-    }
-
-    return false;
-}
-
 void print_board(const Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     for (int row = 0; row < puzzle->size; row++) {
         for (int col = 0; col < puzzle->size; col++) {
