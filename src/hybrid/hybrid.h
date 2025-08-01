@@ -3,7 +3,7 @@
 
 #include "../common/utils.h"
 #include "../mpi/mpi.h"
-#include "../omp/openmp.h"
+#include "../omp/omp.h"
 
 // --- Global MPI variables accessible from main ---
 // The 'extern' keyword tells the compiler that these variables exist
