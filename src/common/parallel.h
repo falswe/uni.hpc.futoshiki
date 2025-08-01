@@ -1,7 +1,7 @@
-#ifndef PARALLEL_WORK_DISTRIBUTION_H
-#define PARALLEL_WORK_DISTRIBUTION_H
+#ifndef PARALLEL_H
+#define PARALLEL_H
 
-#include "futoshiki_common.h"
+#include "utils.h"
 
 /**
  * Multilevel task generation for parallel Futoshiki solvers
@@ -107,4 +107,4 @@ void get_continuation_point(const WorkUnit* work_unit, int* start_row, int* star
  */
 void print_work_unit(const WorkUnit* work_unit, int unit_number);
 
-#endif  // PARALLEL_WORK_DISTRIBUTION_H
+#endif  // PARALLEL_H

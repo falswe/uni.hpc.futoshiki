@@ -1,16 +1,11 @@
-#include "futoshiki_hybrid.h"
+#include "hybrid.h"
 
 #include <mpi.h>
 #include <omp.h>
 
-#include "../common/parallel_work_distribution.h"
-#include "../openmp/futoshiki_omp.h"
-#include "../sequential/futoshiki_seq.h"
+#include "../common/parallel.h"
 
-int g_mpi_rank = 0;
-int g_mpi_size = 1;
 static double g_mpi_task_factor = 1.0;
-static double g_omp_task_factor = 1.0;
 
 typedef enum {
     TAG_WORK_REQUEST = 1,
@@ -20,25 +15,9 @@ typedef enum {
     TAG_WORK_ASSIGNMENT = 5
 } MessageTag;
 
-void init_hybrid(int* argc, char*** argv) {
-    MPI_Init(argc, argv);
-    MPI_Comm_rank(MPI_COMM_WORLD, &g_mpi_rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &g_mpi_size);
-}
-
-void finalize_hybrid(void) { MPI_Finalize(); }
-
 void hybrid_set_mpi_task_factor(double factor) {
     if (factor > 0) {
         g_mpi_task_factor = factor;
-    }
-}
-
-void hybrid_set_omp_task_factor(double factor) {
-    if (factor > 0) {
-        g_omp_task_factor = factor;
-        // Also update the OpenMP implementation's task factor
-        omp_set_task_factor(factor);
     }
 }
 
@@ -61,7 +40,7 @@ static void hybrid_worker(Futoshiki* puzzle) {
         memcpy(&sub_puzzle, puzzle, sizeof(Futoshiki));
         apply_work_unit(&sub_puzzle, &work_unit, sub_puzzle.board);
 
-        if (color_g_omp(&sub_puzzle, local_solution)) {
+        if (omp_solve(&sub_puzzle, local_solution)) {
             // Found a solution, notify master and send it.
             int found_flag = 1;
             MPI_Send(&found_flag, 1, MPI_INT, 0, TAG_SOLUTION_FOUND, MPI_COMM_WORLD);
@@ -85,7 +64,7 @@ static bool hybrid_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     if (!work_units || num_units == 0) {
         log_info("No MPI work units generated - falling back to OpenMP.");
         if (work_units) free(work_units);
-        return color_g_omp(puzzle, solution);
+        return omp_solve(puzzle, solution);
     }
 
     log_verbose("Master distributing %d work units to %d workers.", num_units, num_workers);
@@ -141,10 +120,10 @@ static bool hybrid_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     return found_solution;
 }
 
-static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
+static bool hybrid_solve(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     if (g_mpi_size == 1) {
         log_info("Only 1 MPI process, solving with OpenMP.");
-        return color_g_omp(puzzle, solution);
+        return omp_solve(puzzle, solution);
     }
 
     if (g_mpi_rank == 0) {
@@ -155,7 +134,7 @@ static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     }
 }
 
-SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_solution) {
+SolverStats hybrid_solve_puzzle(const char* filename, bool use_precoloring, bool print_solution) {
     SolverStats stats = {0};
     Futoshiki puzzle;
 
@@ -199,7 +178,7 @@ SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_
 
     int solution[MAX_N][MAX_N] = {{0}};
     double start_coloring = MPI_Wtime();
-    bool found = color_g(&puzzle, solution);
+    bool found = hybrid_solve(&puzzle, solution);
     stats.coloring_time = MPI_Wtime() - start_coloring;
 
     if (g_mpi_rank == 0) {

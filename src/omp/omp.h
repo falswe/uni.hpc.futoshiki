@@ -1,7 +1,7 @@
-#ifndef FUTOSHIKI_OMP_H
-#define FUTOSHIKI_OMP_H
+#ifndef OMP_H
+#define OMP_H
 
-#include "../common/futoshiki_common.h"
+#include "../common/utils.h"
 
 /**
  * Solve a Futoshiki puzzle from file using OpenMP parallelization.
@@ -13,7 +13,7 @@
  * @param print_solution Whether to print the puzzle and its solution.
  * @return SolverStats structure with timing and solution information.
  */
-SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_solution);
+SolverStats omp_solve_puzzle(const char* filename, bool use_precoloring, bool print_solution);
 
 /**
  * Core OpenMP parallel solver using task-based parallelism
@@ -23,7 +23,7 @@ SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_
  * @param solution The solution matrix to fill
  * @return true if solution found, false otherwise
  */
-bool color_g_omp(Futoshiki* puzzle, int solution[MAX_N][MAX_N]);
+bool omp_solve(Futoshiki* puzzle, int solution[MAX_N][MAX_N]);
 
 /**
  * Sets the task generation multiplication factor for OpenMP.
@@ -31,4 +31,4 @@ bool color_g_omp(Futoshiki* puzzle, int solution[MAX_N][MAX_N]);
  */
 void omp_set_task_factor(double factor);
 
-#endif  // FUTOSHIKI_OMP_H
+#endif  // OMP_H

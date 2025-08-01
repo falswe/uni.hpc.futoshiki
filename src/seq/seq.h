@@ -1,7 +1,7 @@
-#ifndef FUTOSHIKI_SEQ_H
-#define FUTOSHIKI_SEQ_H
+#ifndef SEQ_H
+#define SEQ_H
 
-#include "../common/futoshiki_common.h"
+#include "../common/utils.h"
 
 /**
  * Sequential Futoshiki solver
@@ -10,8 +10,8 @@
  * sequential backtracking function for use by other implementations.
  */
 
-// Main solving interface (required by all implementations)
-SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_solution);
+// Main solving interface
+SolverStats seq_solve_puzzle(const char* filename, bool use_precoloring, bool print_solution);
 
 /**
  * Core sequential backtracking solver
@@ -23,6 +23,6 @@ SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_
  * @param col Starting column position
  * @return true if solution found, false otherwise
  */
-bool color_g_seq(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col);
+bool seq_color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col);
 
-#endif  // FUTOSHIKI_SEQ_H
+#endif  // SEQ_H

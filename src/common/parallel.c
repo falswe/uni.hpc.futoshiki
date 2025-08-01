@@ -1,4 +1,4 @@
-#include "parallel_work_distribution.h"
+#include "parallel.h"
 
 #include <stdio.h>
 #include <string.h>

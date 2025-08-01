@@ -1,10 +1,10 @@
-#include "futoshiki_mpi.h"
+#include "mpi.h"
 
 #include <mpi.h>
 #include <string.h>
 
-#include "../common/parallel_work_distribution.h"
-#include "../sequential/futoshiki_seq.h"
+#include "../common/parallel.h"
+#include "../seq/seq.h"
 
 int g_mpi_rank = 0;
 int g_mpi_size = 1;
@@ -18,13 +18,13 @@ typedef enum {
     TAG_WORK_ASSIGNMENT = 5
 } MessageTag;
 
-void init_mpi(int* argc, char*** argv) {
+void mpi_init(int* argc, char*** argv) {
     MPI_Init(argc, argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &g_mpi_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &g_mpi_size);
 }
 
-void finalize_mpi() { MPI_Finalize(); }
+void mpi_finalize(void) { MPI_Finalize(); }
 
 void mpi_set_task_factor(double factor) {
     if (factor > 0) {
@@ -51,7 +51,7 @@ static void mpi_worker(Futoshiki* puzzle) {
         int start_row, start_col;
         get_continuation_point(&work_unit, &start_row, &start_col);
 
-        if (color_g_seq(puzzle, local_solution, start_row, start_col)) {
+        if (seq_color_g(puzzle, local_solution, start_row, start_col)) {
             // Found a solution, notify master and send it.
             int found_flag = 1;
             MPI_Send(&found_flag, 1, MPI_INT, 0, TAG_SOLUTION_FOUND, MPI_COMM_WORLD);
@@ -76,7 +76,7 @@ static bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
         log_info("No MPI work units generated - falling back to sequential.");
         if (work_units) free(work_units);
         memcpy(solution, puzzle->board, sizeof(int) * MAX_N * MAX_N);
-        return color_g_seq(puzzle, solution, 0, 0);
+        return seq_color_g(puzzle, solution, 0, 0);
     }
 
     log_verbose("Master distributing %d work units to %d workers.", num_units, num_workers);
@@ -132,11 +132,11 @@ static bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     return found_solution;
 }
 
-static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
+static bool mpi_solve(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     if (g_mpi_size == 1) {
         log_info("Only 1 MPI process, solving with sequential algorithm.");
         memcpy(solution, puzzle->board, sizeof(int) * MAX_N * MAX_N);
-        return color_g_seq(puzzle, solution, 0, 0);
+        return seq_color_g(puzzle, solution, 0, 0);
     }
 
     if (g_mpi_rank == 0) {
@@ -147,7 +147,7 @@ static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     }
 }
 
-SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_solution) {
+SolverStats mpi_solve_puzzle(const char* filename, bool use_precoloring, bool print_solution) {
     SolverStats stats = {0};
     Futoshiki puzzle;
 
@@ -191,7 +191,7 @@ SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_
 
     int solution[MAX_N][MAX_N] = {{0}};
     double start_coloring = MPI_Wtime();
-    bool found = color_g(&puzzle, solution);
+    bool found = mpi_solve(&puzzle, solution);
     stats.coloring_time = MPI_Wtime() - start_coloring;
 
     if (g_mpi_rank == 0) {

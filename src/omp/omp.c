@@ -1,10 +1,10 @@
-#include "futoshiki_omp.h"
+#include "omp.h"
 
 #include <omp.h>
 #include <string.h>
 
-#include "../common/parallel_work_distribution.h"
-#include "../sequential/futoshiki_seq.h"
+#include "../common/parallel.h"
+#include "../seq/seq.h"  // For seq_color_g
 
 static double g_omp_task_factor = 1.0;
 
@@ -14,7 +14,7 @@ void omp_set_task_factor(double factor) {
     }
 }
 
-bool color_g_omp(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
+bool omp_solve(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     bool found_solution = false;
 
     int num_threads = omp_get_max_threads();
@@ -24,7 +24,7 @@ bool color_g_omp(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     if (depth == 0) {
         log_info("Falling back to sequential solver (no work units generated).");
         memcpy(solution, puzzle->board, sizeof(int) * MAX_N * MAX_N);
-        return color_g_seq(puzzle, solution, 0, 0);
+        return seq_color_g(puzzle, solution, 0, 0);
     }
 
     int num_work_units;
@@ -34,7 +34,7 @@ bool color_g_omp(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
         log_info("Falling back to sequential solver (no work units generated).");
         if (work_units) free(work_units);
         memcpy(solution, puzzle->board, sizeof(int) * MAX_N * MAX_N);
-        return color_g_seq(puzzle, solution, 0, 0);
+        return seq_color_g(puzzle, solution, 0, 0);
     }
 
 #pragma omp parallel
@@ -56,7 +56,7 @@ bool color_g_omp(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
                         int start_row, start_col;
                         get_continuation_point(wu, &start_row, &start_col);
 
-                        if (color_g_seq(puzzle, local_solution, start_row, start_col)) {
+                        if (seq_color_g(puzzle, local_solution, start_row, start_col)) {
 #pragma omp critical
                             {
                                 if (!found_solution) {
@@ -78,7 +78,7 @@ bool color_g_omp(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     return found_solution;
 }
 
-SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_solution) {
+SolverStats omp_solve_puzzle(const char* filename, bool use_precoloring, bool print_solution) {
     SolverStats stats = {0};
     Futoshiki puzzle;
 
@@ -111,7 +111,7 @@ SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_
 
     int solution[MAX_N][MAX_N] = {{0}};
     double start_coloring = get_time();
-    stats.found_solution = color_g_omp(&puzzle, solution);
+    stats.found_solution = omp_solve(&puzzle, solution);
     stats.coloring_time = get_time() - start_coloring;
     stats.total_time = stats.precolor_time + stats.coloring_time;
 

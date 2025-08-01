@@ -1,24 +1,15 @@
-#ifndef FUTOSHIKI_HYBRID_H
-#define FUTOSHIKI_HYBRID_H
+#ifndef HYBRID_H
+#define HYBRID_H
 
-
-#include "../common/futoshiki_common.h"
+#include "../common/utils.h"
+#include "../mpi/mpi.h"
+#include "../omp/omp.h"
 
 // --- Global MPI variables accessible from main ---
 // The 'extern' keyword tells the compiler that these variables exist
-// but are defined in another file (futoshiki_hybrid.c).
+// but are defined in another file (hybrid.c).
 extern int g_mpi_rank;
 extern int g_mpi_size;
-
-/**
- * @brief Initializes the MPI environment.
- */
-void init_hybrid(int *argc, char ***argv);
-
-/**
- * @brief Finalizes the MPI environment.
- */
-void finalize_hybrid(void);
 
 /**
  * @brief Sets the task generation factor for the MPI master process.
@@ -26,14 +17,6 @@ void finalize_hybrid(void);
  * @param factor A multiplier to determine how many work units to create.
  */
 void hybrid_set_mpi_task_factor(double factor);
-
-/**
- * @brief Sets the task generation factor for the OpenMP tasks within each
- * worker.
- *
- * @param factor A multiplier to determine how many sub-tasks to create.
- */
-void hybrid_set_omp_task_factor(double factor);
 
 /**
  * @brief The main entry point for the hybrid Futoshiki solver.
@@ -47,7 +30,6 @@ void hybrid_set_omp_task_factor(double factor);
  * solution.
  * @return SolverStats A struct containing performance and result statistics.
  */
-SolverStats solve_puzzle(const char *filename, bool use_precoloring,
-                         bool print_solution);
+SolverStats hybrid_solve_puzzle(const char* filename, bool use_precoloring, bool print_solution);
 
-#endif  // FUTOSHIKI_HYBRID_H
+#endif  // HYBRID_H

@@ -1,4 +1,4 @@
-#include "futoshiki_common.h"
+#include "utils.h"
 
 #include <ctype.h>
 #include <stdarg.h>
@@ -366,6 +366,34 @@ void print_board(const Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
         }
     }
     printf("\n");
+}
+
+void print_stats(const SolverStats* stats, const char* prefix) {
+    printf("\n%s Results:\n", prefix);
+    printf("========================================\n");
+    printf("Solution found: %s\n", stats->found_solution ? "Yes" : "No");
+
+    if (!stats->found_solution) return;
+
+    printf("\nColor Statistics:\n");
+    printf("  Colors removed by pre-coloring: %d\n", stats->colors_removed);
+    printf("  Colors remaining: %d\n", stats->remaining_colors);
+    if (stats->colors_removed > 0) {
+        double reduction =
+            (double)stats->colors_removed / (stats->colors_removed + stats->remaining_colors) * 100;
+        printf("  Search space reduction: %.1f%%\n", reduction);
+    }
+
+    printf("\nTiming Breakdown:\n");
+    printf("  Pre-coloring phase: %.6f seconds\n", stats->precolor_time);
+    printf("  Solving phase:      %.6f seconds\n", stats->coloring_time);
+    printf("  Total time:         %.6f seconds\n", stats->total_time);
+
+    if (stats->total_time > 0) {
+        printf("\nTime Distribution:\n");
+        printf("  Pre-coloring: %.1f%%\n", (stats->precolor_time / stats->total_time) * 100);
+        printf("  Solving:      %.1f%%\n", (stats->coloring_time / stats->total_time) * 100);
+    }
 }
 
 bool parse_futoshiki(const char* input, Futoshiki* puzzle) {
