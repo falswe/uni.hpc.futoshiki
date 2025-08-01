@@ -1,11 +1,10 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../common/comparison.h"
-#include "futoshiki_mpi.h"
+#include "mpi.h"  // Referencing our own code
 
 int main(int argc, char* argv[]) {
-    init_mpi(&argc, &argv);
+    mpi_init(&argc, &argv);
 
     if (argc < 2) {
         if (g_mpi_rank == 0) {
@@ -17,7 +16,7 @@ int main(int argc, char* argv[]) {
             printf("  -d : Debug mode (shows all messages)\n");
             printf("  -f <factor>: Set task generation factor (e.g., 1.0, 2.0)\n");
         }
-        finalize_mpi();
+        mpi_finalize();
         return 1;
     }
 
@@ -39,7 +38,7 @@ int main(int argc, char* argv[]) {
             task_factor = atof(argv[++i]);
             if (task_factor <= 0) {
                 if (g_mpi_rank == 0) fprintf(stderr, "Error: Invalid task factor\n");
-                finalize_mpi();
+                mpi_finalize();
                 return 1;
             }
         }
@@ -58,13 +57,13 @@ int main(int argc, char* argv[]) {
         log_info("Mode: %s pre-coloring\n", use_precoloring ? "WITH" : "WITHOUT");
     }
 
-    SolverStats stats = solve_puzzle(filename, use_precoloring, g_mpi_rank == 0);
+    SolverStats stats = mpi_solve_puzzle(filename, use_precoloring, g_mpi_rank == 0);
 
     if (g_mpi_rank == 0 && stats.found_solution) {
         log_info("\n--- Final Statistics ---");
         print_stats(&stats, "MPI Solver");
     }
 
-    finalize_mpi();
+    mpi_finalize();
     return stats.found_solution ? 0 : 1;
 }

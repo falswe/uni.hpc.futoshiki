@@ -1,9 +1,11 @@
-#include "futoshiki_omp.h"
 
-#include <omp.h>
+#include "omp.h"  // Referencing our own code
+
+#include <omp.h>  // Referencing external library
 #include <string.h>
 
-#include "../common/parallel_work_distribution.h"
+#include "../common/parallel.h"
+#include "../seq/seq.h"
 
 static double g_omp_task_factor = 1.0;
 
@@ -13,8 +15,7 @@ void omp_set_task_factor(double factor) {
     }
 }
 
-static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
-    log_verbose("Starting OpenMP parallel backtracking.");
+bool omp_solve(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     bool found_solution = false;
 
     int num_threads = omp_get_max_threads();
@@ -24,7 +25,7 @@ static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     if (depth == 0) {
         log_info("Falling back to sequential solver (no work units generated).");
         memcpy(solution, puzzle->board, sizeof(int) * MAX_N * MAX_N);
-        return color_g_seq(puzzle, solution, 0, 0);
+        return seq_color_g(puzzle, solution, 0, 0);
     }
 
     int num_work_units;
@@ -34,29 +35,30 @@ static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
         log_info("Falling back to sequential solver (no work units generated).");
         if (work_units) free(work_units);
         memcpy(solution, puzzle->board, sizeof(int) * MAX_N * MAX_N);
-        return color_g_seq(puzzle, solution, 0, 0);
+        return seq_color_g(puzzle, solution, 0, 0);
     }
 
 #pragma omp parallel
     {
 #pragma omp single
         {
-            log_verbose("Processing %d tasks with %d threads.", num_work_units,
-                        omp_get_num_threads());
+            log_verbose("Worker %d: Spawning %d OMP tasks.", g_mpi_rank, num_work_units);
 
             // As OpenMP runtime's task scheduler works LIFO, prepare for this
             for (int i = num_work_units - 1; i >= 0 && !found_solution; i--) {
-                WorkUnit* wu = &work_units[i];
-
 #pragma omp task firstprivate(i) shared(found_solution)
                 {
+                    log_verbose("Thread %d processing work unit %d", omp_get_thread_num(), i);
+
                     if (!found_solution) {
                         int local_solution[MAX_N][MAX_N];
+                        WorkUnit* wu = &work_units[i];
                         apply_work_unit(puzzle, wu, local_solution);
+
                         int start_row, start_col;
                         get_continuation_point(wu, &start_row, &start_col);
 
-                        if (color_g_seq(puzzle, local_solution, start_row, start_col)) {
+                        if (seq_color_g(puzzle, local_solution, start_row, start_col)) {
 #pragma omp critical
                             {
                                 if (!found_solution) {
@@ -78,7 +80,7 @@ static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     return found_solution;
 }
 
-SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_solution) {
+SolverStats omp_solve_puzzle(const char* filename, bool use_precoloring, bool print_solution) {
     SolverStats stats = {0};
     Futoshiki puzzle;
 
@@ -111,7 +113,7 @@ SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_
 
     int solution[MAX_N][MAX_N] = {{0}};
     double start_coloring = get_time();
-    stats.found_solution = color_g(&puzzle, solution);
+    stats.found_solution = omp_solve(&puzzle, solution);
     stats.coloring_time = get_time() - start_coloring;
     stats.total_time = stats.precolor_time + stats.coloring_time;
 

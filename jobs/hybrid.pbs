@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# PBS script for Hybrid MPI+OpenMP Futoshiki solver
+#PBS -N futoshiki_hybrid
+
+# Max walltime 6h
+#PBS -q short_cpuQ
+# Expected timespan for execution
+#PBS -l walltime=06:00:00
+# Exclusive nodes
+#PBS -l place=excl
+
+# NOTE: The 'select' line is provided by the submit_job.sh script.
+# This script expects PUZZLE_FILE, MPI_PROCS, and OMP_THREADS from the environment.
+# Example for 2 nodes, 16 threads each:
+# #PBS -l select=2:ncpus=16:mem=8gb
+
+# Set default process/thread counts for manual runs
+MPI_PROCS=${MPI_PROCS:-2}
+OMP_THREADS=${OMP_THREADS:-4}
+
+# Change to submission directory
+cd $PBS_O_WORKDIR
+
+# Load modules
+module load mpich-3.2
+
+# Build
+echo "Building Hybrid version..."
+make clean
+make hybrid
+
+if [ ! -f bin/futoshiki_hybrid ]; then
+    echo "Build failed!"
+    exit 1
+fi
+
+# System information
+echo "=============================="
+echo "Futoshiki Hybrid MPI+OMP Solver"
+echo "=============================="
+echo "Job ID: $PBS_JOBID"
+echo "Node: $(hostname)"
+echo "Date: $(date)"
+echo "Puzzle: $PUZZLE_FILE"
+echo "Total CPUs (PBS_NCPUS): $PBS_NCPUS"
+echo "Number of Nodes (PBS_NUM_NODES): $PBS_NUM_NODES"
+echo "MPI Processes: $MPI_PROCS"
+echo "OMP Threads per process: $OMP_THREADS"
+echo "Total Cores: $(($MPI_PROCS * $OMP_THREADS))"
+echo ""
+
+# OpenMP settings
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
+export OMP_NUM_THREADS=$OMP_THREADS
+
+# Run the test
+echo "--- Testing with $MPI_PROCS processes and $OMP_THREADS threads on $PUZZLE_FILE ---"
+mpirun.actual -np $MPI_PROCS ./bin/hybrid "$PUZZLE_FILE"
+echo ""
+
+echo "Job completed at $(date)"

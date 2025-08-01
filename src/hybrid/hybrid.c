@@ -1,12 +1,10 @@
-#include "futoshiki_mpi.h"
+#include "hybrid.h"
 
-#include <mpi.h>
-#include <string.h>
+#include <mpi.h>  // Referencing external library
+#include <omp.h>  // Referencing external library
 
-#include "../common/parallel_work_distribution.h"
+#include "../common/parallel.h"
 
-int g_mpi_rank = 0;
-int g_mpi_size = 1;
 static double g_mpi_task_factor = 1.0;
 
 typedef enum {
@@ -17,36 +15,36 @@ typedef enum {
     TAG_WORK_ASSIGNMENT = 5
 } MessageTag;
 
-void mpi_set_task_factor(double factor) {
+void hybrid_set_mpi_task_factor(double factor) {
     if (factor > 0) {
         g_mpi_task_factor = factor;
     }
 }
 
-static void mpi_worker(Futoshiki* puzzle) {
-    int solution[MAX_N][MAX_N];
+static void hybrid_worker(Futoshiki* puzzle) {
     WorkUnit work_unit;
     MPI_Status status;
 
     while (true) {
-        int has_work = 0;  // Placeholder
-        MPI_Send(&has_work, 1, MPI_INT, 0, TAG_WORK_REQUEST, MPI_COMM_WORLD);
-
+        int request = 1;
+        MPI_Send(&request, 1, MPI_INT, 0, TAG_WORK_REQUEST, MPI_COMM_WORLD);
         MPI_Recv(&work_unit, sizeof(WorkUnit), MPI_BYTE, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 
         if (status.MPI_TAG == TAG_TERMINATE) {
+            log_verbose("Worker %d received termination signal.", g_mpi_rank);
             break;
         }
 
-        apply_work_unit(puzzle, &work_unit, solution);
-        int start_row, start_col;
-        get_continuation_point(&work_unit, &start_row, &start_col);
+        int local_solution[MAX_N][MAX_N];
+        Futoshiki sub_puzzle;
+        memcpy(&sub_puzzle, puzzle, sizeof(Futoshiki));
+        apply_work_unit(&sub_puzzle, &work_unit, sub_puzzle.board);
 
-        if (color_g_seq(puzzle, solution, start_row, start_col)) {
+        if (omp_solve(&sub_puzzle, local_solution)) {
             // Found a solution, notify master and send it.
             int found_flag = 1;
             MPI_Send(&found_flag, 1, MPI_INT, 0, TAG_SOLUTION_FOUND, MPI_COMM_WORLD);
-            MPI_Send(solution, MAX_N * MAX_N, MPI_INT, 0, TAG_SOLUTION_DATA, MPI_COMM_WORLD);
+            MPI_Send(local_solution, MAX_N * MAX_N, MPI_INT, 0, TAG_SOLUTION_DATA, MPI_COMM_WORLD);
 
             // Wait for final termination signal
             MPI_Recv(&work_unit, sizeof(WorkUnit), MPI_BYTE, 0, TAG_TERMINATE, MPI_COMM_WORLD,
@@ -56,26 +54,23 @@ static void mpi_worker(Futoshiki* puzzle) {
     }
 }
 
-static bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
-    log_verbose("Starting MPI parallel backtracking with %d workers", g_mpi_size - 1);
-
+static bool hybrid_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     int num_workers = g_mpi_size > 1 ? g_mpi_size - 1 : 1;
-    int target_tasks = get_target_tasks(num_workers, g_mpi_task_factor, "MPI");
+    int target_tasks = get_target_tasks(num_workers, g_mpi_task_factor, "MPI (Master)");
     int depth = calculate_distribution_depth(puzzle, target_tasks);
     int num_units;
     WorkUnit* work_units = generate_work_units(puzzle, depth, &num_units);
 
     if (!work_units || num_units == 0) {
-        log_info("No work units generated - falling back to sequential.");
+        log_info("No MPI work units generated - falling back to OpenMP.");
         if (work_units) free(work_units);
-        memcpy(solution, puzzle->board, sizeof(int) * MAX_N * MAX_N);
-        return color_g_seq(puzzle, solution, 0, 0);
+        return omp_solve(puzzle, solution);
     }
 
-    log_verbose("Distributing %d work units to %d workers.", num_units, g_mpi_size - 1);
+    log_verbose("Master distributing %d work units to %d workers.", num_units, num_workers);
     int next_unit = 0;
     bool found_solution = false;
-    int active_workers = g_mpi_size - 1;
+    int active_workers = num_workers;
     WorkUnit dummy_unit = {0};
 
     while (active_workers > 0) {
@@ -89,9 +84,7 @@ static bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
                 found_solution = true;
                 MPI_Recv(solution, MAX_N * MAX_N, MPI_INT, worker_rank, TAG_SOLUTION_DATA,
                          MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                log_verbose("Received solution from worker %d. Shutting down other workers.",
-                            worker_rank);
-                // Terminate this worker now
+                log_verbose("Master received solution from worker %d. Shutting down.", worker_rank);
                 MPI_Send(&dummy_unit, sizeof(WorkUnit), MPI_BYTE, worker_rank, TAG_TERMINATE,
                          MPI_COMM_WORLD);
                 active_workers--;
@@ -109,7 +102,7 @@ static bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
                 MPI_Send(&dummy_unit, sizeof(WorkUnit), MPI_BYTE, worker_rank, TAG_TERMINATE,
                          MPI_COMM_WORLD);
                 active_workers--;
-                log_verbose("Worker %d terminated (%s), %d workers remaining", worker_rank,
+                log_verbose("Terminating worker %d (%s). %d workers left.", worker_rank,
                             found_solution ? "solution found by other" : "no more work",
                             active_workers);
             } else {
@@ -127,21 +120,21 @@ static bool mpi_master(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     return found_solution;
 }
 
-static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
+static bool hybrid_solve(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     if (g_mpi_size == 1) {
-        log_info("Only 1 process available, using sequential algorithm.");
-        memcpy(solution, puzzle->board, sizeof(int) * MAX_N * MAX_N);
-        return color_g_seq(puzzle, solution, 0, 0);
+        log_info("Only 1 MPI process, solving with OpenMP.");
+        return omp_solve(puzzle, solution);
     }
+
     if (g_mpi_rank == 0) {
-        return mpi_master(puzzle, solution);
+        return hybrid_master(puzzle, solution);
     } else {
-        mpi_worker(puzzle);
+        hybrid_worker(puzzle);
         return false;
     }
 }
 
-SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_solution) {
+SolverStats hybrid_solve_puzzle(const char* filename, bool use_precoloring, bool print_solution) {
     SolverStats stats = {0};
     Futoshiki puzzle;
 
@@ -185,7 +178,7 @@ SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_
 
     int solution[MAX_N][MAX_N] = {{0}};
     double start_coloring = MPI_Wtime();
-    bool found = color_g(&puzzle, solution);
+    bool found = hybrid_solve(&puzzle, solution);
     stats.coloring_time = MPI_Wtime() - start_coloring;
 
     if (g_mpi_rank == 0) {
@@ -210,13 +203,6 @@ SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_
     } else {
         stats.found_solution = false;  // Only master reports stats
     }
+
     return stats;
 }
-
-void init_mpi(int* argc, char*** argv) {
-    MPI_Init(argc, argv);
-    MPI_Comm_rank(MPI_COMM_WORLD, &g_mpi_rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &g_mpi_size);
-}
-
-void finalize_mpi() { MPI_Finalize(); }

@@ -1,11 +1,10 @@
-#include <omp.h>
+#include <omp.h>  // Referencing external library
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "../common/comparison.h"
-#include "../common/futoshiki_common.h"
-#include "futoshiki_omp.h"
+#include "../common/utils.h"
+#include "omp.h"  // Referencing our own code
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
@@ -59,10 +58,10 @@ int main(int argc, char* argv[]) {
     log_info("Running with %d OpenMP thread(s)", omp_get_max_threads());
     log_info("Puzzle file: %s", filename);
     log_info("Mode: %s pre-coloring\n", use_precoloring ? "WITH" : "WITHOUT");
-    
-    SolverStats stats = solve_puzzle(filename, use_precoloring, true);
+
+    SolverStats stats = omp_solve_puzzle(filename, use_precoloring, true);
 
     print_stats(&stats, "OpenMP Solver");
-    
+
     return 0;
 }

@@ -1,5 +1,5 @@
-#ifndef FUTOSHIKI_COMMON_H
-#define FUTOSHIKI_COMMON_H
+#ifndef UTILS_H
+#define UTILS_H
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -50,14 +50,14 @@ void filter_possible_colors(Futoshiki* puzzle, int row, int col);
 void process_uniqueness(Futoshiki* puzzle, int row, int col);
 int compute_pc_lists(Futoshiki* puzzle, bool use_precoloring);
 
-// === Solving functions ===
+// === Utility solving functions ===
 bool find_first_empty_cell(const Futoshiki* puzzle, int solution[MAX_N][MAX_N], int* row, int* col);
-bool color_g_seq(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col);
 
 // === I/O functions ===
 bool parse_futoshiki(const char* input, Futoshiki* puzzle);
 bool read_puzzle_from_file(const char* filename, Futoshiki* puzzle);
 void print_board(const Futoshiki* puzzle, int solution[MAX_N][MAX_N]);
+void print_stats(const SolverStats* stats, const char* prefix);
 
 // === Utility functions ===
 double get_time(void);
@@ -70,4 +70,4 @@ extern int g_mpi_size;
 // === Main interface - all implementations must provide this ===
 SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_solution);
 
-#endif  // FUTOSHIKI_COMMON_H
+#endif  // UTILS_H

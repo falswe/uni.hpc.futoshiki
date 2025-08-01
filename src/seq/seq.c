@@ -1,12 +1,40 @@
-#include "../common/futoshiki_common.h"
+#include "seq.h"
 
-static bool color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
-    log_verbose("Starting sequential backtracking.");
-    memcpy(solution, puzzle->board, sizeof(int) * MAX_N * MAX_N);
-    return color_g_seq(puzzle, solution, 0, 0);
+bool seq_color_g(Futoshiki* puzzle, int solution[MAX_N][MAX_N], int row, int col) {
+    if (row >= puzzle->size) {
+        return true;
+    }
+
+    if (col >= puzzle->size) {
+        return seq_color_g(puzzle, solution, row + 1, 0);
+    }
+
+    if (puzzle->board[row][col] != EMPTY) {
+        solution[row][col] = puzzle->board[row][col];
+        return seq_color_g(puzzle, solution, row, col + 1);
+    }
+
+    for (int i = 0; i < puzzle->pc_lengths[row][col]; i++) {
+        int color = puzzle->pc_list[row][col][i];
+        if (safe(puzzle, row, col, solution, color)) {
+            solution[row][col] = color;
+            if (seq_color_g(puzzle, solution, row, col + 1)) {
+                return true;
+            }
+            solution[row][col] = EMPTY;
+        }
+    }
+
+    return false;
 }
 
-SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_solution) {
+static bool seq_solve(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
+    log_verbose("Starting sequential backtracking.");
+    memcpy(solution, puzzle->board, sizeof(int) * MAX_N * MAX_N);
+    return seq_color_g(puzzle, solution, 0, 0);
+}
+
+SolverStats seq_solve_puzzle(const char* filename, bool use_precoloring, bool print_solution) {
     SolverStats stats = {0};
     Futoshiki puzzle;
 
@@ -39,7 +67,7 @@ SolverStats solve_puzzle(const char* filename, bool use_precoloring, bool print_
 
     int solution[MAX_N][MAX_N] = {{0}};
     double start_coloring = get_time();
-    stats.found_solution = color_g(&puzzle, solution);
+    stats.found_solution = seq_solve(&puzzle, solution);
     stats.coloring_time = get_time() - start_coloring;
     stats.total_time = stats.precolor_time + stats.coloring_time;
 
