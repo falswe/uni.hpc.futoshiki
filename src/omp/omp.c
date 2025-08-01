@@ -1,4 +1,3 @@
-
 #include "omp.h"  // Referencing our own code
 
 #include <omp.h>  // Referencing external library

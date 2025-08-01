@@ -1,5 +1,5 @@
-#ifndef OMP_H
-#define OMP_H
+#ifndef _OMP_H
+#define _OMP_H
 
 #include "../common/utils.h"
 
@@ -31,4 +31,4 @@ bool omp_solve(Futoshiki* puzzle, int solution[MAX_N][MAX_N]);
  */
 void omp_set_task_factor(double factor);
 
-#endif  // OMP_H
+#endif  // _OMP_H
