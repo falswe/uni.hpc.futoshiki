@@ -23,7 +23,7 @@ module load mpich-3.2
 
 # Build the sequential version
 echo "Building sequential version..."
-make sequential
+make seq
 
 if [ ! -f bin/futoshiki_seq ]; then
     echo "Build failed!"
