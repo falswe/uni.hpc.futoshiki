@@ -46,7 +46,7 @@ case $JOB_TYPE in
                 usage
             fi
             echo "Submitting sequential job for $PUZZLE_FILE..."
-            qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_seq.pbs
+            qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/seq.pbs
             ;;
     
     mpi)
@@ -61,7 +61,7 @@ case $JOB_TYPE in
         echo "Submitting MPI job for $PUZZLE_FILE with $NPROCS processes..."
         echo "Requesting resources: $RESOURCES"
         
-        qsub -l "$RESOURCES" -v PUZZLE_FILE="$PUZZLE_FILE",NPROCS="$NPROCS" jobs/futoshiki_mpi.pbs
+        qsub -l "$RESOURCES" -v PUZZLE_FILE="$PUZZLE_FILE",NPROCS="$NPROCS" jobs/mpi.pbs
         ;;
 
     omp)
@@ -76,7 +76,7 @@ case $JOB_TYPE in
         echo "Submitting OpenMP job for $PUZZLE_FILE with $NPROCS threads..."
         echo "Requesting resources: $RESOURCES"
         
-        qsub -l "$RESOURCES" -v PUZZLE_FILE="$PUZZLE_FILE",NPROCS="$NPROCS" jobs/futoshiki_omp.pbs
+        qsub -l "$RESOURCES" -v PUZZLE_FILE="$PUZZLE_FILE",NPROCS="$NPROCS" jobs/omp.pbs
         ;;
     
     hybrid)
@@ -93,7 +93,7 @@ case $JOB_TYPE in
         echo "Submitting Hybrid job for $PUZZLE_FILE with $MPI_PROCS MPI processes and $OMP_THREADS OpenMP threads..."
         echo "Requesting resources: $RESOURCES"
 
-        qsub -l "$RESOURCES" -v PUZZLE_FILE="$PUZZLE_FILE",MPI_PROCS="$MPI_PROCS",OMP_THREADS="$OMP_THREADS" jobs/futoshiki_hybrid.pbs
+        qsub -l "$RESOURCES" -v PUZZLE_FILE="$PUZZLE_FILE",MPI_PROCS="$MPI_PROCS",OMP_THREADS="$OMP_THREADS" jobs/hybrid.pbs
         ;;
 
     scaling_mpi)
@@ -102,7 +102,7 @@ case $JOB_TYPE in
             usage
         fi
         echo "Submitting MPI scaling test job for $PUZZLE_FILE..."
-        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_scaling_mpi.pbs
+        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/scaling_mpi.pbs
         ;;
     
     scaling_omp)
@@ -111,7 +111,7 @@ case $JOB_TYPE in
             usage
         fi
         echo "Submitting OpenMP scaling test job for $PUZZLE_FILE..."
-        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_scaling_omp.pbs
+        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/scaling_omp.pbs
         ;;
 
     factor_mpi)
@@ -120,7 +120,7 @@ case $JOB_TYPE in
             usage
         fi
         echo "Submitting MPI factor test job for $PUZZLE_FILE..."
-        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_factor_mpi.pbs
+        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/factor_mpi.pbs
         ;;
 
     factor_omp)
@@ -129,7 +129,7 @@ case $JOB_TYPE in
             usage
         fi
         echo "Submitting OpenMP factor test job for $PUZZLE_FILE..."
-        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_factor_omp.pbs
+        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/factor_omp.pbs
         ;;
 
     factor_hybrid)
@@ -138,7 +138,7 @@ case $JOB_TYPE in
             usage
         fi
         echo "Submitting Hybrid factor test job for $PUZZLE_FILE..."
-        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/futoshiki_factor_hybrid.pbs
+        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/factor_hybrid.pbs
         ;;
     
     *)
