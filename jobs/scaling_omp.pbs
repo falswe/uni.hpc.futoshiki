@@ -24,7 +24,7 @@ module load openmpi-4.0.4
 echo "Building OpenMP version..."
 make omp
 
-if [ ! -f bin/futoshiki_omp ]; then
+if [ ! -f bin/omp ]; then
     echo "Build failed!"
     exit 1
 fi

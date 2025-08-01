@@ -24,7 +24,7 @@ module load mpich-3.2
 echo "Building MPI version..."
 make mpi
 
-if [ ! -f bin/futoshiki_mpi ]; then
+if [ ! -f bin/mpi ]; then
     echo "Build failed!"
     exit 1
 fi

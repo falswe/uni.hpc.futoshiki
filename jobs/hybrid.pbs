@@ -30,7 +30,7 @@ echo "Building Hybrid version..."
 make clean
 make hybrid
 
-if [ ! -f bin/futoshiki_hybrid ]; then
+if [ ! -f bin/hybrid ]; then
     echo "Build failed!"
     exit 1
 fi

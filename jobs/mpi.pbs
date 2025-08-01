@@ -32,7 +32,7 @@ echo "Building MPI version..."
 make clean
 make mpi
 
-if [ ! -f bin/futoshiki_mpi ]; then
+if [ ! -f bin/mpi ]; then
     echo "Build failed!"
     exit 1
 fi

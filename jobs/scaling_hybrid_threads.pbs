@@ -25,7 +25,7 @@ module load mpich-3.2
 echo "Building Hybrid version..."
 make hybrid
 
-if [ ! -f bin/futoshiki_hybrid ]; then
+if [ ! -f bin/hybrid ]; then
     echo "Build failed!"
     exit 1
 fi
