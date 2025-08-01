@@ -25,7 +25,6 @@ cd $PBS_O_WORKDIR
 # Load modules
 module load gcc91
 module load mpich-3.2
-module load openmpi-4.0.4
 
 # Build
 echo "Building Hybrid version..."
