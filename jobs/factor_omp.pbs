@@ -19,6 +19,7 @@ fi
 cd $PBS_O_WORKDIR
 
 # Load modules
+module load gcc91
 module load openmpi-4.0.4
 
 # Build the OpenMP version

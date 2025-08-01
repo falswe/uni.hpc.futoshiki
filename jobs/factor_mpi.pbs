@@ -19,6 +19,7 @@ fi
 cd $PBS_O_WORKDIR
 
 # Load modules
+module load gcc91
 module load mpich-3.2
 
 # Build the MPI version

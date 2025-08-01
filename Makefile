@@ -13,6 +13,12 @@ BIN_DIR := bin
 OBJ_DIR := obj
 SRC_DIR := src
 
+# === Selecting gcc-9.1.0 for the cluster ===
+HOSTNAME := $(shell hostname)
+ifneq ($(findstring hpc-head, $(HOSTNAME)),)
+    CC := gcc-9.1.0
+endif
+
 # === Selecting Clang and libomp for macOS ===
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S), Darwin)

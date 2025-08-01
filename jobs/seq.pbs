@@ -17,12 +17,12 @@ fi
 # Change to submission directory
 cd $PBS_O_WORKDIR
 
-# Load modules (may be necessary for build environment)
-module load openmpi-4.0.4
-module load mpich-3.2
+# Load modules
+module load gcc91
 
 # Build the sequential version
 echo "Building sequential version..."
+make clean
 make seq
 
 if [ ! -f bin/seq ]; then
