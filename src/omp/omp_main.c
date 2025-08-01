@@ -4,7 +4,7 @@
 #include <string.h>
 
 #include "../common/utils.h"
-#include "omp.h"  // Referencing our own code
+#include "openmp.h"  // Referencing our own code
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
