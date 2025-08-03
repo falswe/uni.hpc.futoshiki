@@ -4,7 +4,7 @@
 #PBS -N futoshiki_scaling_hybrid_ratios
 #PBS -q short_cpuQ
 #PBS -l walltime=06:00:00
-#PBS -l select=128:ncpus=64:mem=8gb
+#PBS -l select=16:ncpus=16:mem=8gb
 #PBS -l place=excl
 
 # Check PUZZLE_FILE env var
@@ -69,7 +69,7 @@ echo "=================================================="
 for case in "${test_cases[@]}"; do
     read MPI_PROCS OMP_THREADS <<< "$case"
     TOTAL_WU=$((MPI_PROCS * OMP_THREADS))
-    if [ "$TOTAL_WU" -gt "$PBS_NCPUS" ]; then continue; fi
+    # if [ "$TOTAL_WU" -gt "$PBS_NCPUS" ]; then continue; fi # not sure about PBS_NCPUS
 
     echo "--- Testing hybrid with: MPI=$MPI_PROCS, OMP=$OMP_THREADS (Total WUs = $TOTAL_WU) ---"
 
