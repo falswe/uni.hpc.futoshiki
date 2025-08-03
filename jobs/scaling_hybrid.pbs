@@ -1,0 +1,84 @@
+#!/bin/bash
+
+# PBS script for Futoshiki Hybrid (MPI+OpenMP) performance testing (WUstom ratios)
+#PBS -N futoshiki_scaling_hybrid_ratios
+#PBS -q short_cpuQ
+#PBS -l walltime=06:00:00
+#PBS -l select=128:ncpus=64:mem=8gb
+#PBS -l place=excl
+
+# Check PUZZLE_FILE env var
+if [ -z "$PUZZLE_FILE" ]; then
+    echo "ERROR: PUZZLE_FILE environment variable not set."
+    echo "Please use 'qsub -v PUZZLE_FILE=path/to/puzzle.txt ...'"
+    exit 1
+fi
+
+cd $PBS_O_WORKDIR
+
+# Load modules
+module load gcc91
+module load mpich-3.2
+
+# Build the Hybrid version
+echo "Building Hybrid version..."
+make clean
+make hybrid
+
+if [ ! -f bin/hybrid ]; then
+    echo "Build failed!"
+    exit 1
+fi
+
+echo ""
+echo "==========================================================="
+echo "Futoshiki Hybrid Performance Testing"
+echo "==========================================================="
+echo "Job ID: $PBS_JOBID"
+echo "Node: $(hostname)"
+echo "Available Cores per Node: $PBS_NCPUS"
+echo "Date: $(date)"
+echo "Puzzle: $PUZZLE_FILE"
+echo ""
+
+# --- Define the target combinations ---
+test_cases=(
+    # Total WU = 4
+    "1 4"
+    "2 2"
+    "4 1"
+
+    # Total WU = 16
+    "2 8"
+    "4 4"
+    "8 2"
+
+    # Total WU = 64
+    "4 16"
+    "8 8"
+    "16 4"
+)
+
+
+
+echo "=================================================="
+echo "Running configurations for total WU targets: 4 16 64"
+echo "Each with ratios: 1:1, 1:2, 2:1"
+echo "=================================================="
+
+for case in "${test_cases[@]}"; do
+    read MPI_PROCS OMP_THREADS <<< "$case"
+    TOTAL_WU=$((MPI_PROCS * OMP_THREADS))
+    if [ "$TOTAL_WU" -gt "$PBS_NCPUS" ]; then continue; fi
+
+    echo "--- Testing hybrid with: MPI=$MPI_PROCS, OMP=$OMP_THREADS (Total WUs = $TOTAL_WU) ---"
+
+    export OMP_NUM_THREADS=$OMP_THREADS
+    export OMP_PROC_BIND=close
+    export OMP_PLACES=cores
+
+    mpirun.actual -np "$MPI_PROCS" ./bin/hybrid "$PUZZLE_FILE"
+    echo ""
+done
+
+echo "Hybrid performance testing completed at $(date)"

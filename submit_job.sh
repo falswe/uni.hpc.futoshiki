@@ -113,6 +113,15 @@ case $JOB_TYPE in
         echo "Submitting OpenMP scaling test job for $PUZZLE_FILE..."
         qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/scaling_omp.pbs
         ;;
+    
+    scaling_hybrid)
+        if [ -z "$PUZZLE_FILE" ]; then
+            echo "Error: Puzzle file required for hybrid scaling test job"
+            usage
+        fi
+        echo "Submitting Hybrid scaling test job for $PUZZLE_FILE..."
+        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/scaling_hybrid.pbs
+        ;;
 
     factor_mpi)
         if [ -z "$PUZZLE_FILE" ]; then
