@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# PBS script for Futoshiki Hybrid (MPI+OpenMP) performance testing (WUstom ratios)
+# PBS script for Futoshiki Hybrid (MPI+OpenMP) performance testing (custom ratios)
 #PBS -N futoshiki_scaling_hybrid_ratios
 #PBS -q short_cpuQ
 #PBS -l walltime=06:00:00
