@@ -1,0 +1,666 @@
+Building Hybrid version...
+Cleaning build artifacts...
+mpicc -std=c99 -Wall -g -O2 -fopenmp -c src/hybrid/hybrid.c -o obj/hybrid.o
+mpicc -std=c99 -Wall -g -O2 -fopenmp -c src/hybrid/hybrid_main.c -o obj/hybrid_main.o
+mpicc -std=c99 -Wall -g -O2 -c src/common/logger.c -o obj/logger.o
+mpicc -std=c99 -Wall -g -O2 -c src/common/parallel.c -o obj/parallel.o
+mpicc -std=c99 -Wall -g -O2 -c src/common/utils.c -o obj/utils.o
+mpicc -std=c99 -Wall -g -O2 -c src/seq/seq.c -o obj/seq.o
+mpicc -std=c99 -Wall -g -O2 -c src/mpi/mpi.c -o obj/mpi.o
+mpicc -std=c99 -Wall -g -O2 -fopenmp -c src/omp/omp.c -o obj/omp.o
+mpicc -std=c99 -Wall -g -O2 -fopenmp obj/hybrid.o obj/hybrid_main.o obj/logger.o obj/parallel.o obj/utils.o obj/seq.o obj/mpi.o obj/omp.o -o bin/hybrid -lm
+
+===========================================================
+Futoshiki Hybrid Performance Testing
+===========================================================
+Job ID: 3467566.hpc-head-n1.unitn.it
+Node: hpc-c06-node01.unitn.it
+Available Cores per Node: 
+Date: Sun Aug  3 17:10:56 CEST 2025
+Puzzle: puzzles/9x9_hard_1.txt
+
+==================================================
+Running configurations for total WU targets: 4 16 64
+Each with ratios: 1:1, 1:2, 2:1
+==================================================
+--- Testing hybrid with: MPI=1, OMP=4 (Total WUs = 4) ---
+[INFO] =============================
+[INFO] Futoshiki Hybrid Solver
+[INFO] =============================
+[INFO] Running with 1 process(es) and 4 OpenMP thread(s) per process
+[INFO] Puzzle file: puzzles/9x9_hard_1.txt
+[INFO] Mode: WITH pre-coloring
+
+Initial puzzle:
+ 3    8    0    0    4    0 <  0    0    0
+      v    ^         ^         ^    ^     
+ 0    0    0    0    0 <  0    0    0 >  0
+ ^              v                   ^     
+ 0    0 <  0    0 >  0 >  0 <  0    0    0
+                          v              ^
+ 0 <  0 <  0    0 >  0 >  0 <  0    0    0
+                v                   v     
+ 0 <  0 <  0    0    0    0    0    0    3
+                     ^         ^          
+ 5    0 <  0    0 >  7    0    0    0    0
+                                         ^
+ 0 >  0 >  3    0    0 >  0    0    0    0
+ ^                   ^         v    ^     
+ 0    0    0 >  0    0    0 <  0    0    0
+                v                   v     
+ 0    0    0    0    0    0    0    5    0
+
+[INFO] Only 1 MPI process, solving with OpenMP.
+[INFO] OpenMP task generation strategy: target = 4 workers * 1.00 factor = 4 tasks
+[INFO] Chosen depth: 1 (will generate 5 work units)
+[INFO] Generated 5 work units at depth 1
+
+Solution:
+ 3    8    1    9    4    6 <  7    2    5
+      v    ^         ^         ^    ^     
+ 1    4    5    7    6 <  8    9    3 >  2
+ ^              v                   ^     
+ 9    1 <  2    6 >  5 >  3 <  8    7    4
+                          v              ^
+ 2 <  6 <  8    5 >  3 >  1 <  4    9    7
+                v                   v     
+ 6 <  7 <  9    4    2    5    1    8    3
+                     ^         ^          
+ 5    3 <  4    8 >  7    9    2    1    6
+                                         ^
+ 7 >  5 >  3    1    8 >  2    6    4    9
+ ^                   ^         v    ^     
+ 8    2    7 >  3    9    4 <  5    6    1
+                v                   v     
+ 4    9    6    2    1    7    3    5    8
+
+[INFO] 
+--- Final Statistics ---
+
+Hybrid Solver Results:
+========================================
+Solution found: Yes
+
+Color Statistics:
+  Colors removed by pre-coloring: 232
+  Colors remaining: 433
+  Search space reduction: 34.9%
+
+Timing Breakdown:
+  Pre-coloring phase: 0.000063 seconds
+  Solving phase:      27.855697 seconds
+  Total time:         27.855760 seconds
+
+Time Distribution:
+  Pre-coloring: 0.0%
+  Solving:      100.0%
+
+--- Testing hybrid with: MPI=2, OMP=2 (Total WUs = 4) ---
+[INFO][RANK 0] =============================
+[INFO][RANK 0] Futoshiki Hybrid Solver
+[INFO][RANK 0] =============================
+[INFO][RANK 0] Running with 2 process(es) and 2 OpenMP thread(s) per process
+[INFO][RANK 0] Puzzle file: puzzles/9x9_hard_1.txt
+[INFO][RANK 0] Mode: WITH pre-coloring
+
+Initial puzzle:
+ 3    8    0    0    4    0 <  0    0    0
+      v    ^         ^         ^    ^     
+ 0    0    0    0    0 <  0    0    0 >  0
+ ^              v                   ^     
+ 0    0 <  0    0 >  0 >  0 <  0    0    0
+                          v              ^
+ 0 <  0 <  0    0 >  0 >  0 <  0    0    0
+                v                   v     
+ 0 <  0 <  0    0    0    0    0    0    3
+                     ^         ^          
+ 5    0 <  0    0 >  7    0    0    0    0
+                                         ^
+ 0 >  0 >  3    0    0 >  0    0    0    0
+ ^                   ^         v    ^     
+ 0    0    0 >  0    0    0 <  0    0    0
+                v                   v     
+ 0    0    0    0    0    0    0    5    0
+
+[INFO][RANK 0] MPI (Master) task generation strategy: target = 1 workers * 1.00 factor = 1 tasks
+[INFO][RANK 0] Chosen depth: 1 (will generate 5 work units)
+[INFO][RANK 0] Generated 5 work units at depth 1
+
+Solution:
+ 3    8    1    9    4    6 <  7    2    5
+      v    ^         ^         ^    ^     
+ 1    4    5    7    6 <  8    9    3 >  2
+ ^              v                   ^     
+ 9    1 <  2    6 >  5 >  3 <  8    7    4
+                          v              ^
+ 2 <  6 <  8    5 >  3 >  1 <  4    9    7
+                v                   v     
+ 6 <  7 <  9    4    2    5    1    8    3
+                     ^         ^          
+ 5    3 <  4    8 >  7    9    2    1    6
+                                         ^
+ 7 >  5 >  3    1    8 >  2    6    4    9
+ ^                   ^         v    ^     
+ 8    2    7 >  3    9    4 <  5    6    1
+                v                   v     
+ 4    9    6    2    1    7    3    5    8
+
+[INFO][RANK 0] 
+--- Final Statistics ---
+
+Hybrid Solver Results:
+========================================
+Solution found: Yes
+
+Color Statistics:
+  Colors removed by pre-coloring: 232
+  Colors remaining: 433
+  Search space reduction: 34.9%
+
+Timing Breakdown:
+  Pre-coloring phase: 0.000059 seconds
+  Solving phase:      10.283621 seconds
+  Total time:         10.283680 seconds
+
+Time Distribution:
+  Pre-coloring: 0.0%
+  Solving:      100.0%
+
+--- Testing hybrid with: MPI=4, OMP=1 (Total WUs = 4) ---
+[INFO][RANK 0] =============================
+[INFO][RANK 0] Futoshiki Hybrid Solver
+[INFO][RANK 0] =============================
+[INFO][RANK 0] Running with 4 process(es) and 1 OpenMP thread(s) per process
+[INFO][RANK 0] Puzzle file: puzzles/9x9_hard_1.txt
+[INFO][RANK 0] Mode: WITH pre-coloring
+
+Initial puzzle:
+ 3    8    0    0    4    0 <  0    0    0
+      v    ^         ^         ^    ^     
+ 0    0    0    0    0 <  0    0    0 >  0
+ ^              v                   ^     
+ 0    0 <  0    0 >  0 >  0 <  0    0    0
+                          v              ^
+ 0 <  0 <  0    0 >  0 >  0 <  0    0    0
+                v                   v     
+ 0 <  0 <  0    0    0    0    0    0    3
+                     ^         ^          
+ 5    0 <  0    0 >  7    0    0    0    0
+                                         ^
+ 0 >  0 >  3    0    0 >  0    0    0    0
+ ^                   ^         v    ^     
+ 0    0    0 >  0    0    0 <  0    0    0
+                v                   v     
+ 0    0    0    0    0    0    0    5    0
+
+[INFO][RANK 0] MPI (Master) task generation strategy: target = 3 workers * 1.00 factor = 3 tasks
+[INFO][RANK 0] Chosen depth: 1 (will generate 5 work units)
+[INFO][RANK 0] Generated 5 work units at depth 1
+
+Solution:
+ 3    8    1    9    4    6 <  7    2    5
+      v    ^         ^         ^    ^     
+ 1    4    5    7    6 <  8    9    3 >  2
+ ^              v                   ^     
+ 9    1 <  2    6 >  5 >  3 <  8    7    4
+                          v              ^
+ 2 <  6 <  8    5 >  3 >  1 <  4    9    7
+                v                   v     
+ 6 <  7 <  9    4    2    5    1    8    3
+                     ^         ^          
+ 5    3 <  4    8 >  7    9    2    1    6
+                                         ^
+ 7 >  5 >  3    1    8 >  2    6    4    9
+ ^                   ^         v    ^     
+ 8    2    7 >  3    9    4 <  5    6    1
+                v                   v     
+ 4    9    6    2    1    7    3    5    8
+
+[INFO][RANK 0] 
+--- Final Statistics ---
+
+Hybrid Solver Results:
+========================================
+Solution found: Yes
+
+Color Statistics:
+  Colors removed by pre-coloring: 232
+  Colors remaining: 433
+  Search space reduction: 34.9%
+
+Timing Breakdown:
+  Pre-coloring phase: 0.000060 seconds
+  Solving phase:      48.865891 seconds
+  Total time:         48.865951 seconds
+
+Time Distribution:
+  Pre-coloring: 0.0%
+  Solving:      100.0%
+
+--- Testing hybrid with: MPI=2, OMP=8 (Total WUs = 16) ---
+[INFO][RANK 0] =============================
+[INFO][RANK 0] Futoshiki Hybrid Solver
+[INFO][RANK 0] =============================
+[INFO][RANK 0] Running with 2 process(es) and 8 OpenMP thread(s) per process
+[INFO][RANK 0] Puzzle file: puzzles/9x9_hard_1.txt
+[INFO][RANK 0] Mode: WITH pre-coloring
+
+Initial puzzle:
+ 3    8    0    0    4    0 <  0    0    0
+      v    ^         ^         ^    ^     
+ 0    0    0    0    0 <  0    0    0 >  0
+ ^              v                   ^     
+ 0    0 <  0    0 >  0 >  0 <  0    0    0
+                          v              ^
+ 0 <  0 <  0    0 >  0 >  0 <  0    0    0
+                v                   v     
+ 0 <  0 <  0    0    0    0    0    0    3
+                     ^         ^          
+ 5    0 <  0    0 >  7    0    0    0    0
+                                         ^
+ 0 >  0 >  3    0    0 >  0    0    0    0
+ ^                   ^         v    ^     
+ 0    0    0 >  0    0    0 <  0    0    0
+                v                   v     
+ 0    0    0    0    0    0    0    5    0
+
+[INFO][RANK 0] MPI (Master) task generation strategy: target = 1 workers * 1.00 factor = 1 tasks
+[INFO][RANK 0] Chosen depth: 1 (will generate 5 work units)
+[INFO][RANK 0] Generated 5 work units at depth 1
+
+Solution:
+ 3    8    1    9    4    6 <  7    2    5
+      v    ^         ^         ^    ^     
+ 1    4    5    7    6 <  8    9    3 >  2
+ ^              v                   ^     
+ 9    1 <  2    6 >  5 >  3 <  8    7    4
+                          v              ^
+ 2 <  6 <  8    5 >  3 >  1 <  4    9    7
+                v                   v     
+ 6 <  7 <  9    4    2    5    1    8    3
+                     ^         ^          
+ 5    3 <  4    8 >  7    9    2    1    6
+                                         ^
+ 7 >  5 >  3    1    8 >  2    6    4    9
+ ^                   ^         v    ^     
+ 8    2    7 >  3    9    4 <  5    6    1
+                v                   v     
+ 4    9    6    2    1    7    3    5    8
+
+[INFO][RANK 0] 
+--- Final Statistics ---
+
+Hybrid Solver Results:
+========================================
+Solution found: Yes
+
+Color Statistics:
+  Colors removed by pre-coloring: 232
+  Colors remaining: 433
+  Search space reduction: 34.9%
+
+Timing Breakdown:
+  Pre-coloring phase: 0.000062 seconds
+  Solving phase:      7.974428 seconds
+  Total time:         7.974490 seconds
+
+Time Distribution:
+  Pre-coloring: 0.0%
+  Solving:      100.0%
+
+--- Testing hybrid with: MPI=4, OMP=4 (Total WUs = 16) ---
+[INFO][RANK 0] =============================
+[INFO][RANK 0] Futoshiki Hybrid Solver
+[INFO][RANK 0] =============================
+[INFO][RANK 0] Running with 4 process(es) and 4 OpenMP thread(s) per process
+[INFO][RANK 0] Puzzle file: puzzles/9x9_hard_1.txt
+[INFO][RANK 0] Mode: WITH pre-coloring
+
+Initial puzzle:
+ 3    8    0    0    4    0 <  0    0    0
+      v    ^         ^         ^    ^     
+ 0    0    0    0    0 <  0    0    0 >  0
+ ^              v                   ^     
+ 0    0 <  0    0 >  0 >  0 <  0    0    0
+                          v              ^
+ 0 <  0 <  0    0 >  0 >  0 <  0    0    0
+                v                   v     
+ 0 <  0 <  0    0    0    0    0    0    3
+                     ^         ^          
+ 5    0 <  0    0 >  7    0    0    0    0
+                                         ^
+ 0 >  0 >  3    0    0 >  0    0    0    0
+ ^                   ^         v    ^     
+ 0    0    0 >  0    0    0 <  0    0    0
+                v                   v     
+ 0    0    0    0    0    0    0    5    0
+
+[INFO][RANK 0] MPI (Master) task generation strategy: target = 3 workers * 1.00 factor = 3 tasks
+[INFO][RANK 0] Chosen depth: 1 (will generate 5 work units)
+[INFO][RANK 0] Generated 5 work units at depth 1
+
+Solution:
+ 3    8    1    9    4    6 <  7    2    5
+      v    ^         ^         ^    ^     
+ 1    4    5    7    6 <  8    9    3 >  2
+ ^              v                   ^     
+ 9    1 <  2    6 >  5 >  3 <  8    7    4
+                          v              ^
+ 2 <  6 <  8    5 >  3 >  1 <  4    9    7
+                v                   v     
+ 6 <  7 <  9    4    2    5    1    8    3
+                     ^         ^          
+ 5    3 <  4    8 >  7    9    2    1    6
+                                         ^
+ 7 >  5 >  3    1    8 >  2    6    4    9
+ ^                   ^         v    ^     
+ 8    2    7 >  3    9    4 <  5    6    1
+                v                   v     
+ 4    9    6    2    1    7    3    5    8
+
+[INFO][RANK 0] 
+--- Final Statistics ---
+
+Hybrid Solver Results:
+========================================
+Solution found: Yes
+
+Color Statistics:
+  Colors removed by pre-coloring: 232
+  Colors remaining: 433
+  Search space reduction: 34.9%
+
+Timing Breakdown:
+  Pre-coloring phase: 0.000060 seconds
+  Solving phase:      10.487680 seconds
+  Total time:         10.487740 seconds
+
+Time Distribution:
+  Pre-coloring: 0.0%
+  Solving:      100.0%
+
+--- Testing hybrid with: MPI=8, OMP=2 (Total WUs = 16) ---
+[INFO][RANK 0] =============================
+[INFO][RANK 0] Futoshiki Hybrid Solver
+[INFO][RANK 0] =============================
+[INFO][RANK 0] Running with 8 process(es) and 2 OpenMP thread(s) per process
+[INFO][RANK 0] Puzzle file: puzzles/9x9_hard_1.txt
+[INFO][RANK 0] Mode: WITH pre-coloring
+
+Initial puzzle:
+ 3    8    0    0    4    0 <  0    0    0
+      v    ^         ^         ^    ^     
+ 0    0    0    0    0 <  0    0    0 >  0
+ ^              v                   ^     
+ 0    0 <  0    0 >  0 >  0 <  0    0    0
+                          v              ^
+ 0 <  0 <  0    0 >  0 >  0 <  0    0    0
+                v                   v     
+ 0 <  0 <  0    0    0    0    0    0    3
+                     ^         ^          
+ 5    0 <  0    0 >  7    0    0    0    0
+                                         ^
+ 0 >  0 >  3    0    0 >  0    0    0    0
+ ^                   ^         v    ^     
+ 0    0    0 >  0    0    0 <  0    0    0
+                v                   v     
+ 0    0    0    0    0    0    0    5    0
+
+[INFO][RANK 0] MPI (Master) task generation strategy: target = 7 workers * 1.00 factor = 7 tasks
+[INFO][RANK 0] Chosen depth: 2 (will generate 25 work units)
+[INFO][RANK 0] Generated 25 work units at depth 2
+
+Solution:
+ 3    8    1    9    4    6 <  7    2    5
+      v    ^         ^         ^    ^     
+ 1    4    5    7    6 <  8    9    3 >  2
+ ^              v                   ^     
+ 9    1 <  2    6 >  5 >  3 <  8    7    4
+                          v              ^
+ 2 <  6 <  8    5 >  3 >  1 <  4    9    7
+                v                   v     
+ 6 <  7 <  9    4    2    5    1    8    3
+                     ^         ^          
+ 5    3 <  4    8 >  7    9    2    1    6
+                                         ^
+ 7 >  5 >  3    1    8 >  2    6    4    9
+ ^                   ^         v    ^     
+ 8    2    7 >  3    9    4 <  5    6    1
+                v                   v     
+ 4    9    6    2    1    7    3    5    8
+
+[INFO][RANK 0] 
+--- Final Statistics ---
+
+Hybrid Solver Results:
+========================================
+Solution found: Yes
+
+Color Statistics:
+  Colors removed by pre-coloring: 232
+  Colors remaining: 433
+  Search space reduction: 34.9%
+
+Timing Breakdown:
+  Pre-coloring phase: 0.000059 seconds
+  Solving phase:      16.970258 seconds
+  Total time:         16.970317 seconds
+
+Time Distribution:
+  Pre-coloring: 0.0%
+  Solving:      100.0%
+
+--- Testing hybrid with: MPI=4, OMP=16 (Total WUs = 64) ---
+[INFO][RANK 0] =============================
+[INFO][RANK 0] Futoshiki Hybrid Solver
+[INFO][RANK 0] =============================
+[INFO][RANK 0] Running with 4 process(es) and 16 OpenMP thread(s) per process
+[INFO][RANK 0] Puzzle file: puzzles/9x9_hard_1.txt
+[INFO][RANK 0] Mode: WITH pre-coloring
+
+Initial puzzle:
+ 3    8    0    0    4    0 <  0    0    0
+      v    ^         ^         ^    ^     
+ 0    0    0    0    0 <  0    0    0 >  0
+ ^              v                   ^     
+ 0    0 <  0    0 >  0 >  0 <  0    0    0
+                          v              ^
+ 0 <  0 <  0    0 >  0 >  0 <  0    0    0
+                v                   v     
+ 0 <  0 <  0    0    0    0    0    0    3
+                     ^         ^          
+ 5    0 <  0    0 >  7    0    0    0    0
+                                         ^
+ 0 >  0 >  3    0    0 >  0    0    0    0
+ ^                   ^         v    ^     
+ 0    0    0 >  0    0    0 <  0    0    0
+                v                   v     
+ 0    0    0    0    0    0    0    5    0
+
+[INFO][RANK 0] MPI (Master) task generation strategy: target = 3 workers * 1.00 factor = 3 tasks
+[INFO][RANK 0] Chosen depth: 1 (will generate 5 work units)
+[INFO][RANK 0] Generated 5 work units at depth 1
+
+Solution:
+ 3    8    1    9    4    6 <  7    2    5
+      v    ^         ^         ^    ^     
+ 1    4    5    7    6 <  8    9    3 >  2
+ ^              v                   ^     
+ 9    1 <  2    6 >  5 >  3 <  8    7    4
+                          v              ^
+ 2 <  6 <  8    5 >  3 >  1 <  4    9    7
+                v                   v     
+ 6 <  7 <  9    4    2    5    1    8    3
+                     ^         ^          
+ 5    3 <  4    8 >  7    9    2    1    6
+                                         ^
+ 7 >  5 >  3    1    8 >  2    6    4    9
+ ^                   ^         v    ^     
+ 8    2    7 >  3    9    4 <  5    6    1
+                v                   v     
+ 4    9    6    2    1    7    3    5    8
+
+[INFO][RANK 0] 
+--- Final Statistics ---
+
+Hybrid Solver Results:
+========================================
+Solution found: Yes
+
+Color Statistics:
+  Colors removed by pre-coloring: 232
+  Colors remaining: 433
+  Search space reduction: 34.9%
+
+Timing Breakdown:
+  Pre-coloring phase: 0.000061 seconds
+  Solving phase:      7.239818 seconds
+  Total time:         7.239879 seconds
+
+Time Distribution:
+  Pre-coloring: 0.0%
+  Solving:      100.0%
+
+--- Testing hybrid with: MPI=8, OMP=8 (Total WUs = 64) ---
+[INFO][RANK 0] =============================
+[INFO][RANK 0] Futoshiki Hybrid Solver
+[INFO][RANK 0] =============================
+[INFO][RANK 0] Running with 8 process(es) and 8 OpenMP thread(s) per process
+[INFO][RANK 0] Puzzle file: puzzles/9x9_hard_1.txt
+[INFO][RANK 0] Mode: WITH pre-coloring
+
+Initial puzzle:
+ 3    8    0    0    4    0 <  0    0    0
+      v    ^         ^         ^    ^     
+ 0    0    0    0    0 <  0    0    0 >  0
+ ^              v                   ^     
+ 0    0 <  0    0 >  0 >  0 <  0    0    0
+                          v              ^
+ 0 <  0 <  0    0 >  0 >  0 <  0    0    0
+                v                   v     
+ 0 <  0 <  0    0    0    0    0    0    3
+                     ^         ^          
+ 5    0 <  0    0 >  7    0    0    0    0
+                                         ^
+ 0 >  0 >  3    0    0 >  0    0    0    0
+ ^                   ^         v    ^     
+ 0    0    0 >  0    0    0 <  0    0    0
+                v                   v     
+ 0    0    0    0    0    0    0    5    0
+
+[INFO][RANK 0] MPI (Master) task generation strategy: target = 7 workers * 1.00 factor = 7 tasks
+[INFO][RANK 0] Chosen depth: 2 (will generate 25 work units)
+[INFO][RANK 0] Generated 25 work units at depth 2
+
+Solution:
+ 3    8    1    9    4    6 <  7    2    5
+      v    ^         ^         ^    ^     
+ 1    4    5    7    6 <  8    9    3 >  2
+ ^              v                   ^     
+ 9    1 <  2    6 >  5 >  3 <  8    7    4
+                          v              ^
+ 2 <  6 <  8    5 >  3 >  1 <  4    9    7
+                v                   v     
+ 6 <  7 <  9    4    2    5    1    8    3
+                     ^         ^          
+ 5    3 <  4    8 >  7    9    2    1    6
+                                         ^
+ 7 >  5 >  3    1    8 >  2    6    4    9
+ ^                   ^         v    ^     
+ 8    2    7 >  3    9    4 <  5    6    1
+                v                   v     
+ 4    9    6    2    1    7    3    5    8
+
+[INFO][RANK 0] 
+--- Final Statistics ---
+
+Hybrid Solver Results:
+========================================
+Solution found: Yes
+
+Color Statistics:
+  Colors removed by pre-coloring: 232
+  Colors remaining: 433
+  Search space reduction: 34.9%
+
+Timing Breakdown:
+  Pre-coloring phase: 0.000060 seconds
+  Solving phase:      11.958363 seconds
+  Total time:         11.958423 seconds
+
+Time Distribution:
+  Pre-coloring: 0.0%
+  Solving:      100.0%
+
+--- Testing hybrid with: MPI=16, OMP=4 (Total WUs = 64) ---
+[INFO][RANK 0] =============================
+[INFO][RANK 0] Futoshiki Hybrid Solver
+[INFO][RANK 0] =============================
+[INFO][RANK 0] Running with 16 process(es) and 4 OpenMP thread(s) per process
+[INFO][RANK 0] Puzzle file: puzzles/9x9_hard_1.txt
+[INFO][RANK 0] Mode: WITH pre-coloring
+
+Initial puzzle:
+ 3    8    0    0    4    0 <  0    0    0
+      v    ^         ^         ^    ^     
+ 0    0    0    0    0 <  0    0    0 >  0
+ ^              v                   ^     
+ 0    0 <  0    0 >  0 >  0 <  0    0    0
+                          v              ^
+ 0 <  0 <  0    0 >  0 >  0 <  0    0    0
+                v                   v     
+ 0 <  0 <  0    0    0    0    0    0    3
+                     ^         ^          
+ 5    0 <  0    0 >  7    0    0    0    0
+                                         ^
+ 0 >  0 >  3    0    0 >  0    0    0    0
+ ^                   ^         v    ^     
+ 0    0    0 >  0    0    0 <  0    0    0
+                v                   v     
+ 0    0    0    0    0    0    0    5    0
+
+[INFO][RANK 0] MPI (Master) task generation strategy: target = 15 workers * 1.00 factor = 15 tasks
+[INFO][RANK 0] Chosen depth: 2 (will generate 25 work units)
+[INFO][RANK 0] Generated 25 work units at depth 2
+
+Solution:
+ 3    8    1    9    4    6 <  7    2    5
+      v    ^         ^         ^    ^     
+ 1    4    5    7    6 <  8    9    3 >  2
+ ^              v                   ^     
+ 9    1 <  2    6 >  5 >  3 <  8    7    4
+                          v              ^
+ 2 <  6 <  8    5 >  3 >  1 <  4    9    7
+                v                   v     
+ 6 <  7 <  9    4    2    5    1    8    3
+                     ^         ^          
+ 5    3 <  4    8 >  7    9    2    1    6
+                                         ^
+ 7 >  5 >  3    1    8 >  2    6    4    9
+ ^                   ^         v    ^     
+ 8    2    7 >  3    9    4 <  5    6    1
+                v                   v     
+ 4    9    6    2    1    7    3    5    8
+
+[INFO][RANK 0] 
+--- Final Statistics ---
+
+Hybrid Solver Results:
+========================================
+Solution found: Yes
+
+Color Statistics:
+  Colors removed by pre-coloring: 232
+  Colors remaining: 433
+  Search space reduction: 34.9%
+
+Timing Breakdown:
+  Pre-coloring phase: 0.000057 seconds
+  Solving phase:      12.257593 seconds
+  Total time:         12.257650 seconds
+
+Time Distribution:
+  Pre-coloring: 0.0%
+  Solving:      100.0%
+
+Hybrid performance testing completed at Sun Aug  3 17:13:36 CEST 2025
