@@ -4,7 +4,7 @@
 #PBS -N futoshiki_scaling_hybrid
 #PBS -q short_cpuQ
 #PBS -l walltime=06:00:00
-#PBS -l select=16:ncpus=16:mem=8gb
+#PBS -l select=32:ncpus=32:mem=3gb
 #PBS -l place=excl
 
 # Check PUZZLE_FILE env var
@@ -13,6 +13,10 @@ if [ -z "$PUZZLE_FILE" ]; then
     echo "Please use 'qsub -v PUZZLE_FILE=path/to/puzzle.txt ...'"
     exit 1
 fi
+
+# Use provided MF and OF from submit_job.sh, or default to 1
+mf=${MF:-1}
+of=${OF:-1}
 
 cd $PBS_O_WORKDIR
 
@@ -39,45 +43,70 @@ echo "Node: $(hostname)"
 echo "Available Cores per Node: $PBS_NCPUS"
 echo "Date: $(date)"
 echo "Puzzle: $PUZZLE_FILE"
+echo "MPI Task Factor (mf): $mf"
+echo "OMP Task Factor (of): $of"
 echo ""
 
 # --- Define the target combinations ---
+# Each entry is "MPI_PROCESSES OMP_THREADS"
 test_cases=(
+    # Total WU = 1
+    "1 1"
+
+    # Total WU = 2
+    "1 2"
+    "2 1"
+
     # Total WU = 4
     "1 4"
-    "2 2"
     "4 1"
+    "2 2"
+
+    # Total WU = 8
+    "2 4"
+    "4 2"
 
     # Total WU = 16
     "2 8"
-    "4 4"
     "8 2"
+    "4 4"
+
+    # Total WU = 32
+    "4 8"
+    "8 4"
 
     # Total WU = 64
     "4 16"
-    "8 8"
     "16 4"
+    "8 8"
+
+    # Total WU = 128
+    "8 16"
+    "16 8"
+
+    # Total WU = 256
+    "8 32"
+    "32 8"
+    "16 16"
 )
 
-
-
 echo "=================================================="
-echo "Running configurations for total WU targets: 4 16 64"
-echo "Each with ratios: 1:1, 1:2, 2:1"
+echo "Running configurations for total WU targets: 1, 2, 4, 8, 16, 32, 64, 128, 256"
+echo "Using mf=$mf and of=$of for all runs."
 echo "=================================================="
 
 for case in "${test_cases[@]}"; do
     read MPI_PROCS OMP_THREADS <<< "$case"
     TOTAL_WU=$((MPI_PROCS * OMP_THREADS))
-    # if [ "$TOTAL_WU" -gt "$PBS_NCPUS" ]; then continue; fi # not sure about PBS_NCPUS
 
-    echo "--- Testing hybrid with: MPI=$MPI_PROCS, OMP=$OMP_THREADS (Total WUs = $TOTAL_WU) ---"
+    echo "--- Testing: MPI=$MPI_PROCS, OMP=$OMP_THREADS (Total WUs=$TOTAL_WU) with mf=$mf, of=$of ---"
 
     export OMP_NUM_THREADS=$OMP_THREADS
     export OMP_PROC_BIND=close
     export OMP_PLACES=cores
 
-    mpirun.actual -np "$MPI_PROCS" ./bin/hybrid "$PUZZLE_FILE"
+    # Execute the hybrid program with the specified mf and of parameters
+    mpirun.actual -np "$MPI_PROCS" ./bin/hybrid "$PUZZLE_FILE" -mf "$mf" -of "$of"
     echo ""
 done
 

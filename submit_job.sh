@@ -4,7 +4,7 @@
 #
 
 usage() {
-    echo "Usage: $0 <job_type> <puzzle_file> [num_procs_or_threads]"
+    echo "Usage: $0 <job_type> <puzzle_file> [args...]"
     echo ""
     echo "Job types:"
     echo "  seq            - Run sequential solver on a puzzle"
@@ -13,7 +13,7 @@ usage() {
     echo "  hybrid         - Run Hybrid MPI+OpenMP solver with given MPI processes and OpenMP threads"
     echo "  scaling_mpi    - Run MPI performance scaling tests"
     echo "  scaling_omp    - Run OpenMP performance scaling tests"
-    echo "  scaling_hybrid - Run Hybrid performance scaling tests"
+    echo "  scaling_hybrid - Run Hybrid scaling tests with optional MPI and OMP task factors"
     echo "  factor_mpi     - Run MPI task factor performance tests"
     echo "  factor_omp     - Run OpenMP task factor performance tests"
     echo "  factor_hybrid  - Run Hybrid factor test for a puzzle"
@@ -26,6 +26,7 @@ usage() {
     echo "  $0 scaling_mpi puzzles/9x9_hard_1.txt"
     echo "  $0 scaling_omp puzzles/9x9_hard_1.txt"
     echo "  $0 scaling_hybrid puzzles/9x9_hard_1.txt"
+    echo "  $0 scaling_hybrid puzzles/9x9_hard_1.txt 8 8  # With custom factors"
     echo "  $0 factor_mpi puzzles/11x11_hard_1.txt"
     echo "  $0 factor_omp puzzles/9x9_hard_1.txt"
     echo "  $0 factor_hybrid puzzles/9x9_hard_1.txt"
@@ -39,7 +40,7 @@ fi
 
 JOB_TYPE=$1
 PUZZLE_FILE=$2
-NPROCS=$3
+
 
 case $JOB_TYPE in
     seq)
@@ -52,6 +53,7 @@ case $JOB_TYPE in
             ;;
     
     mpi)
+        NPROCS=$3
         if [ -z "$PUZZLE_FILE" ] || [ -z "$NPROCS" ]; then
             echo "Error: Puzzle file and process count required for MPI job"
             usage
@@ -67,6 +69,7 @@ case $JOB_TYPE in
         ;;
 
     omp)
+        NPROCS=$3
         if [ -z "$PUZZLE_FILE" ] || [ -z "$NPROCS" ]; then
             echo "Error: Puzzle file and thread count required for OpenMP job"
             usage
@@ -121,8 +124,20 @@ case $JOB_TYPE in
             echo "Error: Puzzle file required for hybrid scaling test job"
             usage
         fi
-        echo "Submitting Hybrid scaling test job for $PUZZLE_FILE..."
-        qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/scaling_hybrid.pbs
+
+        # Check for optional mf and of parameters
+        if [ $# -eq 4 ]; then
+            MF_VAL=$3
+            OF_VAL=$4
+            echo "Submitting Hybrid scaling test job for $PUZZLE_FILE with mf=$MF_VAL, of=$OF_VAL..."
+            qsub -v PUZZLE_FILE="$PUZZLE_FILE",MF="$MF_VAL",OF="$OF_VAL" jobs/scaling_hybrid.pbs
+        elif [ $# -eq 2 ]; then
+            echo "Submitting Hybrid scaling test job for $PUZZLE_FILE with default factors..."
+            qsub -v PUZZLE_FILE="$PUZZLE_FILE" jobs/scaling_hybrid.pbs
+        else
+            echo "Error: For scaling_hybrid, provide either just a puzzle file or a puzzle file with both mf and of factors."
+            usage
+        fi
         ;;
 
     factor_mpi)
