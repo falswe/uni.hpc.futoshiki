@@ -1,41 +1,28 @@
 #!/bin/bash
-
 # PBS script for OpenMP Futoshiki solver
 #PBS -N futoshiki_omp
-
-# Max walltime 6h
 #PBS -q short_cpuQ
-# Expected timespan for execution
 #PBS -l walltime=06:00:00
-# Exclusive nodes
 #PBS -l place=excl
 
-# NOTE: The 'select' line is now provided by the submit_job.sh script.
-# This script will receive $PUZZLE_FILE and $NPROCS from the environment.
-# Chunks (~ Nodes) : Cores per chunk : Shared memory per chunk
-# #PBS -l select=1:ncpus=64:mem=8gb
-
-# Set a default thread count in case NPROCS isn't passed (for manual runs)
+# Set defaults for manual runs
 NPROCS=${NPROCS:-4}
+FACTOR_ARG=""
+if [ -n "$FACTOR" ]; then
+    FACTOR_ARG="-f $FACTOR"
+fi
 
-# Change to submission directory
 cd $PBS_O_WORKDIR
-
-# Load modules
 module load gcc91
 module load openmpi-4.0.4
 
-# Build
 echo "Building OpenMP version..."
 make clean
 make omp
-
 if [ ! -f bin/omp ]; then
-    echo "Build failed!"
-    exit 1
+    echo "Build failed!"; exit 1;
 fi
 
-# System information
 echo "======================="
 echo "Futoshiki OpenMP Solver"
 echo "======================="
@@ -44,16 +31,15 @@ echo "Node: $(hostname)"
 echo "Date: $(date)"
 echo "Puzzle: $PUZZLE_FILE"
 echo "Threads: $NPROCS"
+[ -n "$FACTOR" ] && echo "Task Factor: $FACTOR"
 echo ""
 
-# OpenMP settings
 export OMP_PROC_BIND=close
 export OMP_PLACES=cores
 export OMP_NUM_THREADS=$NPROCS
 
-# Run the test
 echo "--- Testing with $NPROCS threads on $PUZZLE_FILE ---"
-./bin/omp "$PUZZLE_FILE"
+./bin/omp "$PUZZLE_FILE" $FACTOR_ARG
 echo ""
 
 echo "Job completed at $(date)"
