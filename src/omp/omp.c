@@ -18,6 +18,12 @@ bool omp_solve(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
     bool found_solution = false;
 
     int num_threads = omp_get_max_threads();
+
+    if (num_threads == 1) {
+        log_info("Falling back to sequential solver (better than single threaded OpenMP).");
+        return seq_color_g(puzzle, solution, 0, 0);
+    }
+
     int target_tasks = get_target_tasks(num_threads, g_omp_task_factor, "OpenMP");
     int depth = calculate_distribution_depth(puzzle, target_tasks);
 
