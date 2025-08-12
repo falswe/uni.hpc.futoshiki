@@ -15,6 +15,7 @@ int main(int argc, char* argv[]) {
         printf("  -v       : Verbose mode (shows progress and details)\n");
         printf("  -d       : Debug mode (shows all messages)\n");
         printf("  -t <num> : Set number of OpenMP threads (default: all available)\n");
+        printf("  -f <num> : Set factor for work unit generation (default: 1)\n");
         return 1;
     }
 
@@ -41,15 +42,16 @@ int main(int argc, char* argv[]) {
             }
         } else if (strcmp(argv[i], "-f") == 0 && i + 1 < argc) {
             task_factor = atof(argv[++i]);
+            if (task_factor <= 0) {
+                fprintf(stderr, "Error: Invalid factor\n");
+                return 1;
+            }
         }
-    }
-
-    if (requested_threads > 0) {
-        omp_set_num_threads(requested_threads);
     }
 
     logger_init(log_level);
 
+    omp_set_num_threads(requested_threads);
     omp_set_task_factor(task_factor);
 
     log_info("================================");
