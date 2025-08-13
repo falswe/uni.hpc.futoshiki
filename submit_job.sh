@@ -30,6 +30,10 @@ usage() {
     echo "  $0 scaling_mpi puzzles/9x9_hard_1.txt 2.5       # With task factor"
     echo "  $0 scaling_omp puzzles/9x9_hard_1.txt 4.0       # With task factor"
     echo "  $0 scaling_hybrid puzzles/9x9_hard_1.txt 8 8    # With custom factors"
+    echo "  $0 factor_mpi puzzles/9x9_hard_3.txt"
+    echo "  $0 factor_omp puzzles/9x9_hard_3.txt"
+    echo "  $0 factor_hybrid puzzles/9x9_hard_3.txt"
+
     exit 1
 }
 

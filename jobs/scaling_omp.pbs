@@ -47,7 +47,7 @@ for threads in 1 2 4 8 16 32 64; do
     if [ "$threads" -gt "$PBS_NCPUS" ]; then continue; fi
     echo "--- Testing: openmp with $threads thread(s) ---"
     export OMP_NUM_THREADS=$threads
-    ./bin/omp "$PUZZLE_FILE" $FACTOR_ARG
+    ./bin/omp "$PUZZLE_FILE" -t $threads $FACTOR_ARG
     echo ""
 done
 

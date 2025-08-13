@@ -39,7 +39,7 @@ export OMP_PLACES=cores
 export OMP_NUM_THREADS=$NPROCS
 
 echo "--- Testing with $NPROCS threads on $PUZZLE_FILE ---"
-./bin/omp "$PUZZLE_FILE" $FACTOR_ARG
+./bin/omp "$PUZZLE_FILE" -t $NPROCS $FACTOR_ARG
 echo ""
 
 echo "Job completed at $(date)"
