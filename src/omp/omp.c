@@ -49,8 +49,7 @@ bool omp_solve(Futoshiki* puzzle, int solution[MAX_N][MAX_N]) {
         {
             log_verbose("Worker %d: Spawning %d OMP tasks.", g_mpi_rank, num_work_units);
 
-            // As OpenMP runtime's task scheduler works LIFO, prepare for this
-            for (int i = num_work_units - 1; i >= 0 && !found_solution; i--) {
+            for (int i = 0; i < num_work_units && !found_solution; i++) {
 #pragma omp task firstprivate(i) shared(found_solution)
                 {
                     log_verbose("Thread %d processing work unit %d", omp_get_thread_num(), i);
