@@ -144,14 +144,23 @@ def plot_hybrid_configuration_comparison(df_hybrid, df_seq):
             if config_type in color_map:
                 sorted_group = group_df.sort_values('computational_units')
                 ax.plot(sorted_group['computational_units'], sorted_group['solving_time'], marker='o', linestyle='-', label=config_type, color=color_map.get(config_type), zorder=2)
-        ax.set_title(f'Hybrid Configurations: {os.path.basename(puzzle)}')
+        
+        # --- MODIFICATION: Add task factor to title ---
+        title = f'Hybrid Configurations: {os.path.basename(puzzle)}'
+        unique_factors = puzzle_df['task_factor'].dropna().unique()
+        if len(unique_factors) == 1:
+            factor = unique_factors[0]
+            factor_str = f'{factor:g}'
+            title += f' (Factor={factor_str} {factor_str})'
+        ax.set_title(title)
+
         ax.set_xlabel('Total Computational Units (Cores)')
         ax.set_ylabel('Solving Time (s)')
         ax.set_xscale('log', base=2)
         ax.set_xticks(sorted(puzzle_df['computational_units'].unique()), labels=sorted(puzzle_df['computational_units'].unique()))
         ax.grid(True, which='both', linestyle='--')
         ax.legend()
-        plt.savefig(output_folder / f'hybrid_config_comparison_{os.path.basename(puzzle).replace(".txt", "")}.pdf')
+        plt.savefig(output_folder / f'solving_time_hybrid_{os.path.basename(puzzle).replace(".txt", "")}.pdf')
         plt.close(fig)
 
 def plot_hybrid_speedup_comparison(df_hybrid):
@@ -172,12 +181,21 @@ def plot_hybrid_speedup_comparison(df_hybrid):
                 sorted_group = group_df.sort_values('computational_units').dropna(subset=['speedup'])
                 if not sorted_group.empty:
                     ax.plot(sorted_group['computational_units'], sorted_group['speedup'], marker='o', linestyle='-', label=config_type, color=color_map.get(config_type), zorder=2)
-        ax.set_title(f'Hybrid Speedup: {os.path.basename(puzzle)}')
+        
+        # --- MODIFICATION: Add task factor to title ---
+        title = f'Hybrid Speedup: {os.path.basename(puzzle)}'
+        unique_factors = puzzle_df['task_factor'].dropna().unique()
+        if len(unique_factors) == 1:
+            factor = unique_factors[0]
+            factor_str = f'{factor:g}'
+            title += f' (Factor={factor_str} {factor_str})'
+        ax.set_title(title)
+
         ax.set_xlabel('Total Computational Units (Cores)')
         ax.set_ylabel('Speedup')
         ax.grid(True, which='both', linestyle='--')
         ax.legend()
-        plt.savefig(output_folder / f'hybrid_speedup_comparison_{os.path.basename(puzzle).replace(".txt", "")}.pdf')
+        plt.savefig(output_folder / f'speedup_hybrid_{os.path.basename(puzzle).replace(".txt", "")}.pdf')
         plt.close(fig)
 
 def plot_hybrid_efficiency_comparison(df_hybrid):
@@ -194,14 +212,23 @@ def plot_hybrid_efficiency_comparison(df_hybrid):
                 sorted_group = group_df.sort_values('computational_units').dropna(subset=['efficiency'])
                 if not sorted_group.empty:
                     ax.plot(sorted_group['computational_units'], sorted_group['efficiency'], marker='o', linestyle='-', label=config_type, color=color_map.get(config_type))
-        ax.set_title(f'Hybrid Efficiency: {os.path.basename(puzzle)}')
+        
+        # --- MODIFICATION: Add task factor to title ---
+        title = f'Hybrid Efficiency: {os.path.basename(puzzle)}'
+        unique_factors = puzzle_df['task_factor'].dropna().unique()
+        if len(unique_factors) == 1:
+            factor = unique_factors[0]
+            factor_str = f'{factor:g}'
+            title += f' (Factor={factor_str} {factor_str})'
+        ax.set_title(title)
+
         ax.set_xlabel('Total Computational Units (Cores)')
         ax.set_ylabel('Efficiency')
         ax.set_xscale('log', base=2)
         ax.set_xticks(sorted(puzzle_df['computational_units'].unique()), labels=sorted(puzzle_df['computational_units'].unique()))
         ax.grid(True, which='both', linestyle='--')
         ax.legend()
-        plt.savefig(output_folder / f'hybrid_efficiency_comparison_{os.path.basename(puzzle).replace(".txt", "")}.pdf')
+        plt.savefig(output_folder / f'efficiency_hybrid_{os.path.basename(puzzle).replace(".txt", "")}.pdf')
         plt.close(fig)
 
 def plot_comparison_efficiency(df):
@@ -215,14 +242,21 @@ def plot_comparison_efficiency(df):
             sorted_df = impl_df.sort_values('computational_units')
             if not sorted_df.empty:
                 plt.plot(sorted_df['computational_units'], sorted_df['efficiency'], marker='o', linestyle='-', label=impl.upper(), color=color_map.get(impl))
-        plt.title(f'Efficiency: {os.path.basename(puzzle)}')
+        
+        title = f'Efficiency: {os.path.basename(puzzle)}'
+        unique_factors = puzzle_df['task_factor'].dropna().unique()
+        if len(unique_factors) == 1:
+            factor_str = f'{unique_factors[0]:g}'
+            title += f' (Factor={factor_str})'
+        plt.title(title)
+
         plt.xlabel('Total Computational Units (Cores)')
         plt.ylabel('Efficiency')
         plt.xscale('log', base=2)
         plt.xticks(sorted(puzzle_df['computational_units'].unique()), labels=sorted(puzzle_df['computational_units'].unique()))
         plt.grid(True, which='both', linestyle='--')
         plt.legend()
-        plt.savefig(output_folder / f'comparison_efficiency_{os.path.basename(puzzle).replace(".txt", "")}.pdf')
+        plt.savefig(output_folder / f'efficiency_mpi_omp_{os.path.basename(puzzle).replace(".txt", "")}.pdf')
         plt.close()
 
 def plot_all_factor_analyses(df_factor):
@@ -235,7 +269,6 @@ def plot_all_factor_analyses(df_factor):
         
     print("Generating all Task Factor analysis plots...")
 
-    # Group by implementation, then by puzzle
     for impl_type, impl_df in df_factor.groupby('implementation'):
         for puzzle, puzzle_df in impl_df.groupby('puzzle_name'):
             plt.figure()
@@ -247,7 +280,7 @@ def plot_all_factor_analyses(df_factor):
                 plt.title(f'MPI Time vs. Task Factor: {os.path.basename(puzzle)}')
                 plt.xlabel('Task Factor')
                 plt.legend(title="Processes")
-                filename = f'factor_analysis_mpi_{os.path.basename(puzzle).replace(".txt", "")}.pdf'
+                filename = f'factor_mpi_{os.path.basename(puzzle).replace(".txt", "")}.pdf'
 
             elif impl_type == 'omp':
                 for threads, group in puzzle_df.groupby('num_threads'):
@@ -256,17 +289,16 @@ def plot_all_factor_analyses(df_factor):
                 plt.title(f'OMP Time vs. Task Factor: {os.path.basename(puzzle)}')
                 plt.xlabel('Task Factor')
                 plt.legend(title="Threads")
-                filename = f'factor_analysis_omp_{os.path.basename(puzzle).replace(".txt", "")}.pdf'
+                filename = f'factor_omp_{os.path.basename(puzzle).replace(".txt", "")}.pdf'
 
             elif impl_type == 'hybrid':
                 for (procs, threads), group in puzzle_df.groupby(['num_processors', 'num_threads']):
                     group = group.sort_values('task_factor')
                     plt.plot(group['task_factor'], group['solving_time'], marker='o', linestyle='-', label=f'{int(procs)}p x {int(threads)}t')
                 plt.title(f'Hybrid Time vs. Task Factor: {os.path.basename(puzzle)}')
-                # *** MODIFICATION: Set a specific, clear x-axis label for the hybrid case ***
-                plt.xlabel('Symmetric Task Factor (mf=of)')
+                plt.xlabel('Symmetric Task Factor (MPI factor = OpenMP factor)')
                 plt.legend(title="Config")
-                filename = f'factor_analysis_hybrid_{os.path.basename(puzzle).replace(".txt", "")}.pdf'
+                filename = f'factor_hybrid_{os.path.basename(puzzle).replace(".txt", "")}.pdf'
             
             plt.ylabel('Solving Time (s)')
             plt.xscale('log', base=2)
@@ -294,14 +326,21 @@ def plot_comparison_solving_time(df, df_seq):
             sorted_df = impl_df.sort_values('computational_units')
             if not sorted_df.empty:
                 plt.plot(sorted_df['computational_units'], sorted_df['solving_time'], marker='o', linestyle='-', label=impl.upper(), color=color_map.get(impl), zorder=2)
-        plt.title(f'Solving Time: {os.path.basename(puzzle)}')
+        
+        title = f'Solving Time: {os.path.basename(puzzle)}'
+        unique_factors = puzzle_df['task_factor'].dropna().unique()
+        if len(unique_factors) == 1:
+            factor_str = f'{unique_factors[0]:g}'
+            title += f' (Factor={factor_str})'
+        plt.title(title)
+        
         plt.xlabel('Total Computational Units (Cores)')
         plt.ylabel('Solving Time (s)')
         plt.xscale('log', base=2)
         plt.xticks(sorted(puzzle_df['computational_units'].unique()), labels=sorted(puzzle_df['computational_units'].unique()))
         plt.grid(True, which='both', linestyle='--')
         plt.legend()
-        plt.savefig(output_folder / f'comparison_solving_time_{os.path.basename(puzzle).replace(".txt", "")}.pdf')
+        plt.savefig(output_folder / f'solving_time_mpi_omp_{os.path.basename(puzzle).replace(".txt", "")}.pdf')
         plt.close()
 
 def plot_comparison_speedup(df):
@@ -320,12 +359,19 @@ def plot_comparison_speedup(df):
             all_units = puzzle_df['computational_units'].dropna()
             ideal_range = np.linspace(min(all_units), max(all_units), 100)
             ax.plot(ideal_range, ideal_range, color='red', linestyle='--', label='Ideal Speedup', zorder=1)
-        ax.set_title(f'Speedup: {os.path.basename(puzzle)}')
+        
+        title = f'Speedup: {os.path.basename(puzzle)}'
+        unique_factors = puzzle_df['task_factor'].dropna().unique()
+        if len(unique_factors) == 1:
+            factor_str = f'{unique_factors[0]:g}'
+            title += f' (Factor={factor_str})'
+        ax.set_title(title)
+        
         ax.set_xlabel('Total Computational Units (Cores)')
         ax.set_ylabel('Speedup')
         ax.grid(True, which='both', linestyle='--')
         ax.legend()
-        plt.savefig(output_folder / f'comparison_speedup_{os.path.basename(puzzle).replace(".txt", "")}.pdf')
+        plt.savefig(output_folder / f'speedup_mpi_omp_{os.path.basename(puzzle).replace(".txt", "")}.pdf')
         plt.close(fig)
 
 def main():
