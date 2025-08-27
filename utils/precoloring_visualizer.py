@@ -81,7 +81,7 @@ def plot_precoloring_total_time_comparison(df, save_path, dimension=None):
     # Clean puzzle names FIRST
     seq_df['puzzle_name'] = seq_df['puzzle_name'].apply(os.path.basename).str.replace('.txt', '', regex=False)
 
-    # *** Conditionally filter by dimension ***
+    # Conditionally filter by dimension
     if dimension:
         pattern = f"{dimension}x{dimension}"
         print(f"Filtering for puzzles starting with '{pattern}'...")
@@ -89,7 +89,6 @@ def plot_precoloring_total_time_comparison(df, save_path, dimension=None):
     else:
         print("No dimension provided. Using all sequential puzzles.")
 
-    # Check if any data remains after filtering
     if seq_df.empty:
         print("No data found for the specified criteria. Skipping plot generation.")
         plt.rcdefaults()
@@ -120,6 +119,9 @@ def plot_precoloring_total_time_comparison(df, save_path, dimension=None):
     ax.set_ylabel('Total Time (s)')
     ax.tick_params(axis='x', rotation=90)
     ax.legend(title=None, loc='upper right')
+    
+    ymin, ymax = ax.get_ylim()
+    ax.set_ylim(ymin, ymax * 3)
 
     for p in barplot.patches:
         if p.get_height() > 0:
