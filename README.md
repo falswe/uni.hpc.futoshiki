@@ -1,6 +1,6 @@
 # Parallel Futoshiki Solver
 
-A high-performance parallel solver for Futoshiki puzzles with sequential, OpenMP, and MPI implementations.
+A high-performance parallel solver for Futoshiki puzzles with sequential, OpenMP, MPI implementations and also an hybrid one combining the two approaches together.
 
 ## Overview
 
@@ -13,7 +13,7 @@ This project implements a parallel solver using a **list-coloring based algorith
 
 ## Features
 
-- **Three implementations**: Sequential, OpenMP (shared memory), and MPI (distributed)
+- **Four implementations**: Sequential, OpenMP (shared memory), MPI (distributed), hybrid (MPI+OMP)
 - **Pre-coloring optimization**: Reduces search space by filtering impossible values
 - **Parallel backtracking**: Distributes search branches across threads/processes
 - **Performance comparison**: Built-in benchmarking and analysis tools
@@ -113,13 +113,15 @@ The solver uses a **list-coloring based backtracking algorithm**:
 
 ```
 .
+├── jobs/                # HPC job scripts
+├── puzzles/             # Example puzzles
 ├── src/
 │   ├── common/          # Shared code
-│   ├── sequential/      # Sequential solver
-│   ├── openmp/          # OpenMP parallel solver
-│   └── mpi/             # MPI parallel solver
-├── puzzles/             # Example puzzles
-├── jobs/                # HPC job scripts
+│   ├── hybrid/          # Hybrid parallel solver
+│   ├── mpi/             # MPI parallel solver
+│   ├── omp/             # OpenMP parallel solver
+│   └── seq/             # Sequential solver
+├── puzzles/             # Utility scripts
 └── Makefile
 ```
 
